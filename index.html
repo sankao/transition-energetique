@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modèle de Transition Énergétique - France</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f6fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--dark));
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: var(--secondary);
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .card-header.green { background: var(--success); }
+        .card-header.orange { background: var(--warning); }
+        .card-header.red { background: var(--danger); }
+        .card-header.dark { background: var(--dark); }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: var(--light);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .highlight {
+            background: #d5f5e3 !important;
+            font-weight: bold;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .chart-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .formula {
+            background: #f8f9fa;
+            border-left: 4px solid var(--secondary);
+            padding: 15px 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        .key-result {
+            background: linear-gradient(135deg, var(--success), #2ecc71);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .key-result h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .key-result p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-box {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-box .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
+        .stat-box .label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--warning);
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .info-box.blue {
+            background: #d1ecf1;
+            border-color: var(--secondary);
+        }
+
+        .info-box.red {
+            background: #f8d7da;
+            border-color: var(--danger);
+        }
+
+        .info-box.green {
+            background: #d4edda;
+            border-color: var(--success);
+        }
+
+        ul, ol {
+            margin: 15px 0 15px 30px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            margin-top: 40px;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .toc h3 {
+            margin-bottom: 15px;
+        }
+
+        .toc a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .toc li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .stat-box .value {
+                font-size: 1.8em;
+            }
+
+            th, td {
+                padding: 8px 10px;
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Modèle de Transition Énergétique</h1>
+        <p>Analyse du besoin en énergie d'appoint pour la France</p>
+    </header>
+
+    <div class="container">
+        <!-- Table des matières -->
+        <nav class="toc">
+            <h3>Sommaire</h3>
+            <ul>
+                <li><a href="#introduction">1. Introduction et Méthodologie</a></li>
+                <li><a href="#resultats-energetiques">2. Résultats Énergétiques</a></li>
+                <li><a href="#sensibilite">3. Analyse de Sensibilité</a></li>
+                <li><a href="#analyse-financiere">4. Analyse Financière</a></li>
+                <li><a href="#conclusion">5. Conclusion</a></li>
+            </ul>
+        </nav>
+
+        <!-- Section 1: Introduction -->
+        <section id="introduction">
+            <div class="card">
+                <div class="card-header">1. Introduction et Méthodologie</div>
+                <div class="card-body">
+                    <p>Ce modèle évalue le besoin en <strong>énergie d'appoint (gaz)</strong> pour un scénario de transition énergétique en France, basé sur un déploiement massif de photovoltaïque et l'électrification du chauffage.</p>
+
+                    <h3 style="margin-top: 20px;">Hypothèses de Production</h3>
+                    <table>
+                        <tr>
+                            <th>Source</th>
+                            <th>Capacité</th>
+                            <th>Détail</th>
+                        </tr>
+                        <tr>
+                            <td>Photovoltaïque</td>
+                            <td class="text-right"><strong>500 GWc</strong></td>
+                            <td>Maisons (200) + Collectif (50) + Centrales (250)</td>
+                        </tr>
+                        <tr>
+                            <td>Nucléaire</td>
+                            <td class="text-right">30-50 GW</td>
+                            <td>Maintenu au niveau actuel (données RTE 2020)</td>
+                        </tr>
+                        <tr>
+                            <td>Hydraulique</td>
+                            <td class="text-right">5-10 GW</td>
+                            <td>Maintenu au niveau actuel</td>
+                        </tr>
+                        <tr>
+                            <td>Éolien</td>
+                            <td class="text-right">0 GW</td>
+                            <td>Non comptabilisé (hypothèse conservatrice)</td>
+                        </tr>
+                    </table>
+
+                    <h3 style="margin-top: 20px;">Hypothèses de Consommation</h3>
+                    <table>
+                        <tr>
+                            <th>Secteur</th>
+                            <th>Traitement</th>
+                        </tr>
+                        <tr>
+                            <td>Chauffage résidentiel</td>
+                            <td>Électrifié via pompes à chaleur (COP = 2)</td>
+                        </tr>
+                        <tr>
+                            <td>Transport marchandises</td>
+                            <td>×0.4 (rendement moteur thermique → électrique)</td>
+                        </tr>
+                        <tr>
+                            <td>Transport voyageurs</td>
+                            <td>×0.2 (efficacité + report modal)</td>
+                        </tr>
+                        <tr>
+                            <td>Industrie / Tertiaire</td>
+                            <td>Maintenu au niveau actuel</td>
+                        </tr>
+                    </table>
+
+                    <h3 style="margin-top: 20px;">Formule de Calcul</h3>
+                    <div class="formula">
+                        Énergie gaz (TWh) = Déficit (kW) × Durée (h/jour) × 30 (jours/mois) / 10⁹
+                    </div>
+
+                    <p>Le calcul se fait par <strong>mois</strong> et par <strong>plage horaire</strong> (5 plages par jour: 8h-13h, 13h-18h, 18h-20h, 20h-23h, 23h-8h).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Résultats Énergétiques -->
+        <section id="resultats-energetiques">
+            <div class="card">
+                <div class="card-header red">2. Résultats Énergétiques (Modèle Initial 500 GWc)</div>
+                <div class="card-body">
+
+                    <div class="key-result" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                        <h2>114.8 TWh/an</h2>
+                        <p>Besoin en énergie d'appoint gaz pour le scénario 500 GWc sans stockage</p>
+                    </div>
+
+                    <h3>Répartition Mensuelle</h3>
+                    <table>
+                        <tr>
+                            <th>Mois</th>
+                            <th class="text-right">Énergie (TWh)</th>
+                            <th class="text-right">% du total</th>
+                            <th>Visualisation</th>
+                        </tr>
+                        <tr>
+                            <td>Janvier</td>
+                            <td class="text-right"><strong>29.4</strong></td>
+                            <td class="text-right">26%</td>
+                            <td><div style="background: #e74c3c; height: 20px; width: 100%; border-radius: 3px;"></div></td>
+                        </tr>
+                        <tr>
+                            <td>Décembre</td>
+                            <td class="text-right"><strong>28.6</strong></td>
+                            <td class="text-right">25%</td>
+                            <td><div style="background: #e74c3c; height: 20px; width: 97%; border-radius: 3px;"></div></td>
+                        </tr>
+                        <tr>
+                            <td>Novembre</td>
+                            <td class="text-right"><strong>26.1</strong></td>
+                            <td class="text-right">23%</td>
+                            <td><div style="background: #e67e22; height: 20px; width: 89%; border-radius: 3px;"></div></td>
+                        </tr>
+                        <tr>
+                            <td>Février</td>
+                            <td class="text-right">16.9</td>
+                            <td class="text-right">15%</td>
+                            <td><div style="background: #f39c12; height: 20px; width: 57%; border-radius: 3px;"></div></td>
+                        </tr>
+                        <tr>
+                            <td>Octobre</td>
+                            <td class="text-right">9.8</td>
+                            <td class="text-right">9%</td>
+                            <td><div style="background: #f1c40f; height: 20px; width: 33%; border-radius: 3px;"></div></td>
+                        </tr>
+                        <tr>
+                            <td>Mars</td>
+                            <td class="text-right">2.4</td>
+                            <td class="text-right">2%</td>
+                            <td><div style="background: #2ecc71; height: 20px; width: 8%; border-radius: 3px;"></div></td>
+                        </tr>
+                        <tr>
+                            <td>Avril</td>
+                            <td class="text-right">1.6</td>
+                            <td class="text-right">1%</td>
+                            <td><div style="background: #2ecc71; height: 20px; width: 5%; border-radius: 3px;"></div></td>
+                        </tr>
+                        <tr>
+                            <td>Mai - Septembre</td>
+                            <td class="text-right">0</td>
+                            <td class="text-right">0%</td>
+                            <td><div style="background: #27ae60; height: 20px; width: 2%; border-radius: 3px;"></div></td>
+                        </tr>
+                    </table>
+
+                    <div class="info-box blue">
+                        <strong>Observation clé:</strong> 100% du besoin gaz est concentré sur octobre-avril. La plage nocturne (23h-8h) est systématiquement en surplus grâce au nucléaire + hydraulique.
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>Bilan Énergétique Mensuel</h3>
+                        <img src="bilan_energetique_114twh.png" alt="Bilan énergétique mensuel">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Analyse de Sensibilité -->
+        <section id="sensibilite">
+            <div class="card">
+                <div class="card-header orange">3. Analyse de Sensibilité (100 → 1000 GWc)</div>
+                <div class="card-body">
+                    <p>L'analyse explore l'impact de différentes capacités solaires sur le besoin en gaz, avec et sans stockage journalier.</p>
+
+                    <table>
+                        <tr>
+                            <th>Capacité solaire</th>
+                            <th class="text-right">Gaz (sans stockage)</th>
+                            <th class="text-right">Gaz (avec stockage)</th>
+                            <th class="text-right">Gain stockage</th>
+                        </tr>
+                        <tr>
+                            <td>100 GWc (France ×5)</td>
+                            <td class="text-right">~390 TWh</td>
+                            <td class="text-right">~390 TWh</td>
+                            <td class="text-right">0 TWh</td>
+                        </tr>
+                        <tr>
+                            <td>300 GWc</td>
+                            <td class="text-right">~181 TWh</td>
+                            <td class="text-right">~181 TWh</td>
+                            <td class="text-right">0 TWh</td>
+                        </tr>
+                        <tr>
+                            <td>500 GWc (modèle initial)</td>
+                            <td class="text-right">~115 TWh</td>
+                            <td class="text-right">~88 TWh</td>
+                            <td class="text-right">27 TWh</td>
+                        </tr>
+                        <tr class="highlight">
+                            <td><strong>700 GWc (optimum)</strong></td>
+                            <td class="text-right"><strong>~51 TWh</strong></td>
+                            <td class="text-right"><strong>~39 TWh</strong></td>
+                            <td class="text-right"><strong>12 TWh</strong></td>
+                        </tr>
+                        <tr>
+                            <td>950 GWc (zéro gaz)</td>
+                            <td class="text-right">~13 TWh</td>
+                            <td class="text-right"><strong>0 TWh</strong></td>
+                            <td class="text-right">13 TWh</td>
+                        </tr>
+                    </table>
+
+                    <div class="info-box green">
+                        <strong>Rendement décroissant:</strong> Les premiers GWc installés économisent le plus de gaz. Passer de 100→300 GWc économise ~209 TWh, mais passer de 700→900 GWc n'économise que ~34 TWh.
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>Impact de la Capacité Solaire sur le Besoin en Gaz</h3>
+                        <img src="sensibilite_solaire_gaz.png" alt="Analyse de sensibilité solaire vs gaz">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Analyse Financière -->
+        <section id="analyse-financiere">
+            <div class="card">
+                <div class="card-header dark">4. Analyse Financière</div>
+                <div class="card-body">
+
+                    <h3>Hypothèses de Coûts (2024)</h3>
+                    <table>
+                        <tr>
+                            <th>Paramètre</th>
+                            <th class="text-right">Valeur</th>
+                            <th>Source</th>
+                        </tr>
+                        <tr>
+                            <td>Électricité gaz (SRMC)</td>
+                            <td class="text-right"><strong>€90/MWh</strong></td>
+                            <td>Coût marginal CCGT Europe</td>
+                        </tr>
+                        <tr>
+                            <td>Solaire PV (CAPEX)</td>
+                            <td class="text-right"><strong>€600/kW</strong></td>
+                            <td>IRENA Europe 2024</td>
+                        </tr>
+                        <tr>
+                            <td>Stockage batterie (CAPEX)</td>
+                            <td class="text-right"><strong>€200/kWh</strong></td>
+                            <td>BNEF Europe 2024</td>
+                        </tr>
+                        <tr>
+                            <td>Durée de vie solaire</td>
+                            <td class="text-right"><strong>30 ans</strong></td>
+                            <td>Standard industrie</td>
+                        </tr>
+                        <tr>
+                            <td>Durée de vie stockage</td>
+                            <td class="text-right"><strong>15 ans</strong></td>
+                            <td>Standard industrie</td>
+                        </tr>
+                    </table>
+
+                    <div class="key-result">
+                        <h2>Optimum: 700 GWc</h2>
+                        <p>Coût total minimum sur 30 ans: <strong>€550 milliards</strong> (CAPEX + gaz résiduel)</p>
+                    </div>
+
+                    <h3>Comparaison des Scénarios (coût total sur 30 ans)</h3>
+                    <table>
+                        <tr>
+                            <th>Scénario</th>
+                            <th class="text-right">CAPEX</th>
+                            <th class="text-right">Gaz/an</th>
+                            <th class="text-right">Total 30 ans</th>
+                            <th class="text-right">vs Optimum</th>
+                        </tr>
+                        <tr>
+                            <td>France ×5 (100 GWc)</td>
+                            <td class="text-right">€118B</td>
+                            <td class="text-right">€35.1B/an</td>
+                            <td class="text-right">€1,171B</td>
+                            <td class="text-right" style="color: #e74c3c;">+€620B</td>
+                        </tr>
+                        <tr>
+                            <td>Intermédiaire (300 GWc)</td>
+                            <td class="text-right">€258B</td>
+                            <td class="text-right">€16.3B/an</td>
+                            <td class="text-right">€746B</td>
+                            <td class="text-right" style="color: #e67e22;">+€196B</td>
+                        </tr>
+                        <tr>
+                            <td>Modèle initial (500 GWc)</td>
+                            <td class="text-right">€365B</td>
+                            <td class="text-right">€7.9B/an</td>
+                            <td class="text-right">€602B</td>
+                            <td class="text-right" style="color: #f39c12;">+€52B</td>
+                        </tr>
+                        <tr class="highlight">
+                            <td><strong>Optimum (700 GWc)</strong></td>
+                            <td class="text-right"><strong>€444B</strong></td>
+                            <td class="text-right"><strong>€3.5B/an</strong></td>
+                            <td class="text-right"><strong>€550B</strong></td>
+                            <td class="text-right" style="color: #27ae60;"><strong>OPTIMUM</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Zéro gaz (950 GWc)</td>
+                            <td class="text-right">€596B</td>
+                            <td class="text-right">€0</td>
+                            <td class="text-right">€596B</td>
+                            <td class="text-right" style="color: #9b59b6;">+€46B</td>
+                        </tr>
+                    </table>
+
+                    <div class="chart-container">
+                        <h3>Analyse Financière Détaillée</h3>
+                        <img src="analyse_financiere.png" alt="Analyse financière">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Conclusion -->
+        <section id="conclusion">
+            <div class="card">
+                <div class="card-header green">5. Conclusion et Enseignements</div>
+                <div class="card-body">
+
+                    <div class="grid">
+                        <div class="stat-box">
+                            <div class="value">700 GWc</div>
+                            <div class="label">Capacité solaire optimale</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value">×35</div>
+                            <div class="label">vs France actuelle (~20 GWc)</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value">€550B</div>
+                            <div class="label">Coût total sur 30 ans</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value">39 TWh/an</div>
+                            <div class="label">Gaz résiduel à l'optimum</div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 30px;">Enseignements Clés</h3>
+                    <ol>
+                        <li><strong>L'optimum économique se situe à 700 GWc</strong>, soit 35× la capacité française actuelle (~20 GWc en 2024). C'est le point où le coût total sur 30 ans (CAPEX + gaz) est minimisé.</li>
+                        <li><strong>Rendement décroissant:</strong> Au-delà de 700 GWc, chaque GWc supplémentaire coûte plus cher à installer qu'il ne permet d'économiser en gaz.</li>
+                        <li><strong>Le stockage journalier</strong> (efficacité 85%) réduit significativement le besoin en gaz en valorisant les surplus nocturnes du nucléaire.</li>
+                        <li><strong>L'indépendance énergétique totale</strong> (zéro gaz) est atteignable à ~950 GWc avec un surcoût modéré de +€46B sur 30 ans par rapport à l'optimum.</li>
+                    </ol>
+
+                    <h3 style="margin-top: 30px;">Limites du Modèle</h3>
+                    <div class="info-box red">
+                        <ul style="margin: 0;">
+                            <li>Éolien non comptabilisé (hypothèse conservatrice)</li>
+                            <li>Pas de stockage inter-saisonnier</li>
+                            <li>Pas d'interconnexions européennes</li>
+                            <li>Coûts 2024 (les prix du solaire et du stockage continuent de baisser)</li>
+                        </ul>
+                    </div>
+
+                    <h3 style="margin-top: 30px;">Résumé des Scénarios</h3>
+                    <table>
+                        <tr>
+                            <th>Résultat</th>
+                            <th>Valeur</th>
+                        </tr>
+                        <tr>
+                            <td>Optimum économique</td>
+                            <td><strong>700 GWc de solaire + 122 GWh de stockage</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Coût total optimal (30 ans)</td>
+                            <td><strong>€550 milliards</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Gaz résiduel à l'optimum</td>
+                            <td><strong>39 TWh/an = €3.5B/an</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Capacité pour zéro gaz</td>
+                            <td><strong>950 GWc + 128 GWh stockage</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Surcoût zéro-gaz vs optimum</td>
+                            <td><strong>+€46 milliards sur 30 ans</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>Source: Modèle de transition énergétique basé sur le fichier <code>modélisation générale.ods</code></p>
+        <p>Analyse Python disponible dans <code>france_energy_transition.ipynb</code></p>
+        <p style="margin-top: 15px; color: #999;">Généré automatiquement • Janvier 2026</p>
+    </footer>
+</body>
+</html>
