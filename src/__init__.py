@@ -10,8 +10,9 @@ from .config import EnergyModelConfig, DEFAULT_CONFIG
 from .emissions import EmissionsConfig, bilan_carbone
 from .heating import HeatingConfig, bilan_chauffage_annuel
 from .sources import ALL_SOURCES, get_source, get_sources_for_parameter
+from .trajectory import TrajectoryConfig, calculer_trajectoire
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 __all__ = [
     "EnergyModelConfig",
     "DEFAULT_CONFIG",
@@ -19,6 +20,8 @@ __all__ = [
     "bilan_carbone",
     "HeatingConfig",
     "bilan_chauffage_annuel",
+    "TrajectoryConfig",
+    "calculer_trajectoire",
     "ALL_SOURCES",
     "get_source",
     "get_sources_for_parameter",
