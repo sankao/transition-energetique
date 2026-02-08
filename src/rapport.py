@@ -13,6 +13,7 @@ from typing import Optional
 from src.config import EnergyModelConfig, DEFAULT_CONFIG
 from src.emissions import bilan_carbone, resume_emissions
 from src.heating import bilan_chauffage_annuel, resume_chauffage, HeatingConfig
+from src.transport import resume_transport
 from src.trajectory import (
     calculer_trajectoire,
     resume_trajectoire,
@@ -222,6 +223,10 @@ def generer_rapport(
     # ---- 5. Chauffage ----
     sections.append(_section_titre("5. Chauffage"))
     sections.append(resume_chauffage())
+
+    # ---- 5b. Transport ----
+    sections.append(_section_titre("5b. Transport"))
+    sections.append(resume_transport())
 
     # ---- 6. Bilan carbone ----
     sections.append(_section_titre("6. Bilan carbone"))

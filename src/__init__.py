@@ -12,8 +12,9 @@ from .heating import HeatingConfig, bilan_chauffage_annuel
 from .sources import ALL_SOURCES, get_source, get_sources_for_parameter
 from .tarification import TarificationConfig, tarif_equilibre_eur_mwh
 from .trajectory import TrajectoryConfig, calculer_trajectoire
+from .transport import TransportConfig, bilan_transport
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 __all__ = [
     "EnergyModelConfig",
     "DEFAULT_CONFIG",
@@ -25,6 +26,8 @@ __all__ = [
     "tarif_equilibre_eur_mwh",
     "TrajectoryConfig",
     "calculer_trajectoire",
+    "TransportConfig",
+    "bilan_transport",
     "ALL_SOURCES",
     "get_source",
     "get_sources_for_parameter",

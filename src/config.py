@@ -104,8 +104,8 @@ class ConsumptionConfig:
     # Source: ADEME statistics
     residential_heating_fraction: float = 0.67
 
-    # Transport electrification efficiency factors
-    # Source: Model assumptions based on motor efficiency
+    # Transport electrification efficiency factors (legacy, simplified)
+    # For detailed modal breakdown, see TransportConfig in src/transport.py
     transport_freight_factor: float = 0.4   # Thermal -> electric efficiency gain
     transport_passenger_factor: float = 0.2  # Includes modal shift
 

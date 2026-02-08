@@ -157,8 +157,11 @@ def emissions_evitees_mt(
     residuelles = emissions_gaz_backup_mt(gaz_twh, config)
 
     # Electrification of transport eliminates most fossil fuel emissions
-    # Conservative: 80% of transport emissions avoided (some remain: aviation, etc.)
-    evitees_transport = config.emissions_transport_mt * 0.80
+    # Fraction computed from detailed transport module (aviation + heavy trucking remain)
+    from src.transport import bilan_transport
+    bilan_t = bilan_transport()
+    fraction_transport_evitee = bilan_t['fraction_fossile_evitee']
+    evitees_transport = config.emissions_transport_mt * fraction_transport_evitee
 
     # Electrification of heating eliminates fossil fuel heating emissions
     # Conservative: 90% of building emissions avoided
