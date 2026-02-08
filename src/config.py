@@ -94,7 +94,8 @@ class ProductionConfig:
 class ConsumptionConfig:
     """Consumption-side parameters."""
 
-    # Heat pump coefficient of performance
+    # Heat pump coefficient of performance (legacy, fixed value)
+    # For detailed temperature-dependent COP, use HeatingConfig in src/heating.py
     # Source: Conservative estimate for air-source heat pumps
     # Valid range: 2.0 - 4.0 depending on temperature
     heat_pump_cop: float = 2.0
