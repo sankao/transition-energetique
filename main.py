@@ -112,8 +112,8 @@ def compute_synthesis(db, config):
             hyd_mw = rte_lookup.get(key, {}).get('hydraulique_mw', 0.0)
 
             # Production (kW)
-            pv_maisons = kwc_maison * nombre_maisons * 1000 * cf
-            pv_collectif = kwc_collectif * nombre_collectifs * 1000 * cf
+            pv_maisons = kwc_maison * nombre_maisons * cf
+            pv_collectif = kwc_collectif * nombre_collectifs * cf
             pv_centrales = gwc_centrales * 1_000_000 * cf
             hydraulique = hyd_mw * 1000
             eolien = 0.0

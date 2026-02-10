@@ -98,24 +98,22 @@ def add_synthesis_sheet(writer: ODSWriter, db):
                 # A: Period label (static)
                 {'value': f"{mois} {plage}"},
 
-                # B: PV maisons (kW) = kwc_par_maison * nombre_maisons * 1000 * capacity_factor
+                # B: PV maisons (kW) = kwc_par_maison * nombre_maisons * capacity_factor
                 {
                     'value': vals.get('pv_maisons_kw', 0.0),
                     'formula': (
                         f"of:={ref_kwc_maison}"
                         f"*{ref_n_maisons}"
-                        f"*1000"
                         f"*[facteurs_solaires.C{r}]"
                     ),
                 },
 
-                # C: PV collectif (kW)
+                # C: PV collectif (kW) = kwc_par_collectif * nombre_collectifs * capacity_factor
                 {
                     'value': vals.get('pv_collectif_kw', 0.0),
                     'formula': (
                         f"of:={ref_kwc_collectif}"
                         f"*{ref_n_collectifs}"
-                        f"*1000"
                         f"*[facteurs_solaires.C{r}]"
                     ),
                 },
