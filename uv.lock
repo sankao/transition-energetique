@@ -372,6 +372,7 @@ dependencies = [
     { name = "numpy" },
     { name = "odfpy" },
     { name = "pandas" },
+    { name = "requests" },
 ]
 
 [package.optional-dependencies]
@@ -388,6 +389,7 @@ requires-dist = [
     { name = "odfpy", specifier = ">=1.4.1" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "requests", specifier = ">=2.31.0" },
 ]
 provides-extras = ["dev"]
 
