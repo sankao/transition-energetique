@@ -34,20 +34,21 @@ class EnergyModelDB:
     def store_parameters(self, config):
         """Store all EnergyModelConfig params. config is an EnergyModelConfig instance."""
         # Store key parameters that the ODS synthesis will reference
+        p = config.production
         params = [
-            ('solar_gwc_maisons', 200.0, 'GWc', 'Model scenario', 'PV résidentiel individuel'),
-            ('solar_gwc_collectif', 50.0, 'GWc', 'Model scenario', 'PV résidentiel collectif'),
-            ('solar_gwc_centrales', 250.0, 'GWc', 'Model scenario', 'PV centrales au sol'),
-            ('nombre_maisons', 20_000_000, 'unités', 'INSEE', 'Maisons individuelles'),
-            ('nombre_collectifs', 10_000_000, 'unités', 'INSEE', 'Logements collectifs'),
-            ('kwc_par_maison', 10.0, 'kWc', 'Model assumption', 'Puissance PV par maison'),
-            ('kwc_par_collectif', 5.0, 'kWc', 'Model assumption', 'Puissance PV par collectif'),
+            ('solar_gwc_maisons', p.solar_gwc_maisons, 'GWc', 'Model scenario', 'PV résidentiel individuel'),
+            ('solar_gwc_collectif', p.solar_gwc_collectif, 'GWc', 'Model scenario', 'PV résidentiel collectif'),
+            ('solar_gwc_centrales', p.solar_gwc_centrales, 'GWc', 'Model scenario', 'PV centrales au sol'),
+            ('nombre_maisons', p.nombre_maisons, 'unités', 'INSEE', 'Maisons individuelles'),
+            ('nombre_collectifs', p.nombre_collectifs, 'unités', 'INSEE', 'Logements collectifs'),
+            ('kwc_par_maison', p.kwc_par_maison, 'kWc', 'Model assumption', 'Puissance PV par maison'),
+            ('kwc_par_collectif', p.kwc_par_collectif, 'kWc', 'Model assumption', 'Puissance PV par collectif'),
             ('cop_pac', config.consumption.heat_pump_cop, 'ratio', 'ADEME', 'COP pompe à chaleur'),
             ('jours_par_mois', config.temporal.jours_par_mois, 'jours', 'Simplification', 'Jours par mois'),
-            ('solar_capacity_gwc', config.production.solar_capacity_gwc, 'GWc', 'Model scenario', 'Capacité solaire totale'),
-            ('nuclear_min_gw', config.production.nuclear_min_gw, 'GW', 'RTE', 'Nucléaire minimum'),
-            ('nuclear_max_gw', config.production.nuclear_max_gw, 'GW', 'RTE', 'Nucléaire maximum'),
-            ('hydro_avg_gw', config.production.hydro_avg_gw, 'GW', 'RTE', 'Hydraulique moyen'),
+            ('solar_capacity_gwc', p.solar_capacity_gwc, 'GWc', 'Model scenario', 'Capacité solaire totale'),
+            ('nuclear_min_gw', p.nuclear_min_gw, 'GW', 'RTE', 'Nucléaire minimum'),
+            ('nuclear_max_gw', p.nuclear_max_gw, 'GW', 'RTE', 'Nucléaire maximum'),
+            ('hydro_avg_gw', p.hydro_avg_gw, 'GW', 'RTE', 'Hydraulique moyen'),
         ]
         self.conn.executemany(
             "INSERT OR REPLACE INTO parametres (name, value, unit, source, description) VALUES (?, ?, ?, ?, ?)",
@@ -152,25 +153,27 @@ class EnergyModelDB:
         ter = bilan_tertiaire(tertiaire_config)
 
         # Convert annual TWh to constant kW: TWh * 1e9 / (8760 hours)
+        # Note: flat distribution is a simplification (no seasonality)
         industrie_kw_flat = ind['total_elec_twh'] * 1e9 / 8760
         tertiaire_kw_flat = ter['total_elec_twh'] * 1e9 / 8760
 
+        # Transport: rail + SAF electricity (not in charging profile, distributed flat)
+        electrifie = transport_elec(transport_config)
+        rail_saf_kw = (electrifie['rail_elec_twh'] + electrifie['aviation_elec_saf_twh']) * 1e9 / 8760
+
         rows = []
         for mois in mois_ordre:
-            # Transport: per-slot TWh/year, convert to kW
-            # TWh/year for this slot -> kW: TWh * 1e9 / (duree_h * jours_par_mois * 12)
-
             # Agriculture: monthly TWh distributed evenly across 5 slots
             agri_monthly_twh = consommation_mensuelle_twh(mois, agriculture_config)
 
             for plage in plages:
                 duree = durees[plage]
 
-                # Transport kW from annual slot TWh
+                # Transport kW: charging profile + flat rail/SAF
                 transport_slot_twh = demande_recharge_par_plage(plage, transport_config)
                 # annual TWh for this slot -> kW power during that slot
                 # Slot happens every day: kW = TWh * 1e9 / (duree_h * 365)
-                transport_kw = transport_slot_twh * 1e9 / (duree * 365)
+                transport_kw = transport_slot_twh * 1e9 / (duree * 365) + rail_saf_kw
 
                 # Agriculture: distribute monthly TWh across 5 slots proportional to duration
                 agri_slot_twh = agri_monthly_twh * duree / 24.0

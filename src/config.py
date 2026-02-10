@@ -63,10 +63,19 @@ class TemporalConfig:
 class ProductionConfig:
     """Production-side parameters."""
 
-    # Solar PV capacity (GWc)
-    # Breakdown: 200 GWc residential + 50 GWc collective + 250 GWc centralized
+    # Solar PV capacity (GWc) — total and breakdown
     # Source: Model scenario assumption
     solar_capacity_gwc: float = 500.0
+    solar_gwc_maisons: float = 200.0       # Residential rooftop
+    solar_gwc_collectif: float = 50.0      # Collective housing rooftop
+    solar_gwc_centrales: float = 250.0     # Ground-mounted utility
+
+    # Residential PV sizing
+    # Source: INSEE housing stock, model assumption
+    nombre_maisons: int = 20_000_000       # Individual houses
+    nombre_collectifs: int = 10_000_000    # Collective housing units
+    kwc_par_maison: float = 10.0           # kWc per house
+    kwc_par_collectif: float = 5.0         # kWc per collective unit
 
     # Current French solar capacity for reference (GWc)
     # Source: RTE 2024

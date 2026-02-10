@@ -90,12 +90,13 @@ def compute_synthesis(db, config):
 
     jours = config.temporal.jours_par_mois
 
-    # PV parameters
-    kwc_maison = 10.0
-    nombre_maisons = 20_000_000
-    kwc_collectif = 5.0
-    nombre_collectifs = 10_000_000
-    gwc_centrales = 250.0
+    # PV parameters from config
+    p = config.production
+    kwc_maison = p.kwc_par_maison
+    nombre_maisons = p.nombre_maisons
+    kwc_collectif = p.kwc_par_collectif
+    nombre_collectifs = p.nombre_collectifs
+    gwc_centrales = p.solar_gwc_centrales
 
     synthesis_rows = []
     total_gas_twh = 0.0

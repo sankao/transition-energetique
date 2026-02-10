@@ -79,7 +79,6 @@ class AgricultureConfig:
         'Août': 1.3,
         'Septembre': 1.0,
         'Octobre': 0.8,
-        'Mars': 0.8,
         'Novembre': 0.6,
         'Décembre': 0.5,
     })

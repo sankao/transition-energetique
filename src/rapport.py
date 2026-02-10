@@ -25,7 +25,7 @@ from src.trajectory import (
 # Section generators
 # ---------------------------------------------------------------------------
 
-def generer_resume_executif(gaz_twh: float = 114.0) -> str:
+def generer_resume_executif(gaz_twh: float) -> str:
     """
     Generate a concise executive summary (< 500 characters).
 
@@ -94,7 +94,7 @@ def generer_tableau_hypotheses(
     return "\n".join(lines)
 
 
-def generer_section_resultats(gaz_twh: float = 114.0) -> str:
+def generer_section_resultats(gaz_twh: float) -> str:
     """
     Generate the key results section.
 
@@ -152,7 +152,7 @@ def _section_titre(titre: str) -> str:
 # ---------------------------------------------------------------------------
 
 def generer_rapport(
-    gaz_twh: float = 114.0,
+    gaz_twh: float,
     config: Optional[EnergyModelConfig] = None,
 ) -> str:
     """
