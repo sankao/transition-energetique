@@ -31,25 +31,30 @@ class EnergyModelDB:
             self.conn.execute(table_sql)
         self.conn.commit()
 
-    def store_parameters(self, config):
-        """Store all EnergyModelConfig params. config is an EnergyModelConfig instance."""
-        # Store key parameters that the ODS synthesis will reference
-        p = config.production
-        params = [
-            ('solar_gwc_maisons', p.solar_gwc_maisons, 'GWc', 'Model scenario', 'PV résidentiel individuel'),
-            ('solar_gwc_collectif', p.solar_gwc_collectif, 'GWc', 'Model scenario', 'PV résidentiel collectif'),
-            ('solar_gwc_centrales', p.solar_gwc_centrales, 'GWc', 'Model scenario', 'PV centrales au sol'),
-            ('nombre_maisons', p.nombre_maisons, 'unités', 'INSEE', 'Maisons individuelles'),
-            ('nombre_collectifs', p.nombre_collectifs, 'unités', 'INSEE', 'Logements collectifs'),
-            ('kwc_par_maison', p.kwc_par_maison, 'kWc', 'Model assumption', 'Puissance PV par maison'),
-            ('kwc_par_collectif', p.kwc_par_collectif, 'kWc', 'Model assumption', 'Puissance PV par collectif'),
-            ('cop_pac', config.consumption.heat_pump_cop, 'ratio', 'ADEME', 'COP pompe à chaleur'),
-            ('jours_par_mois', config.temporal.jours_par_mois, 'jours', 'Simplification', 'Jours par mois'),
-            ('solar_capacity_gwc', p.solar_capacity_gwc, 'GWc', 'Model scenario', 'Capacité solaire totale'),
-            ('nuclear_min_gw', p.nuclear_min_gw, 'GW', 'RTE', 'Nucléaire minimum'),
-            ('nuclear_max_gw', p.nuclear_max_gw, 'GW', 'RTE', 'Nucléaire maximum'),
-            ('hydro_avg_gw', p.hydro_avg_gw, 'GW', 'RTE', 'Hydraulique moyen'),
-        ]
+    def store_parameters(self, config, heating_config=None,
+                         transport_config=None, industrie_config=None,
+                         tertiaire_config=None, agriculture_config=None):
+        """Store all 142 model parameters via the knob registry.
+
+        config is an EnergyModelConfig instance. Other configs are optional
+        sector-specific configs; if None, registry defaults are used.
+        """
+        from src.ods_generator.knob_registry import build_parametres_rows_from_configs, KnobEntry, REGISTRY
+
+        rows = build_parametres_rows_from_configs(
+            config=config,
+            heating_config=heating_config,
+            transport_config=transport_config,
+            industrie_config=industrie_config,
+            tertiaire_config=tertiaire_config,
+            agriculture_config=agriculture_config,
+        )
+        # Only store KnobEntry rows (skip CategoryEntry)
+        params = []
+        for i, entry in enumerate(REGISTRY):
+            if isinstance(entry, KnobEntry):
+                row = rows[i]
+                params.append((row[0], row[1], row[2], row[3], row[4]))
         self.conn.executemany(
             "INSERT OR REPLACE INTO parametres (name, value, unit, source, description) VALUES (?, ?, ?, ?, ?)",
             params

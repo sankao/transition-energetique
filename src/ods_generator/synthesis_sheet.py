@@ -4,10 +4,14 @@ Every numeric cell is an ODF formula referencing source data sheets.
 Pre-computed values from the DB are set alongside formulas so numbers
 display immediately without recalculation.
 
+Production columns reference parametres + facteurs_solaires + prod_nucleaire_hydraulique.
+Consumption columns reference calc sheets (formula-based, traceable to parametres).
+
 60 data rows (12 months x 5 time slots) plus monthly totals and annual total.
 """
 
 from .writer import ODSWriter
+from .knob_registry import get_param_ref
 
 
 MOIS_ORDRE = (
@@ -38,11 +42,6 @@ HEADERS = [
 ]
 
 
-def _col_letter(idx):
-    """Convert 0-based column index to ODS column letter (A-Z)."""
-    return chr(65 + idx)
-
-
 def add_synthesis_sheet(writer: ODSWriter, db):
     """Generate the synthesis sheet with cross-sheet formulas.
 
@@ -65,40 +64,46 @@ def add_synthesis_sheet(writer: ODSWriter, db):
     for row in synthesis_data:
         lookup[(row['mois'], row['plage'])] = row
 
-    # Load parameters for formula references
-    # Row positions in parametres sheet (1-based, row 1 is header):
-    # We need to find the row index for each parameter
-    param_rows = {}
-    cursor = db.conn.execute("SELECT rowid, name FROM parametres ORDER BY rowid")
-    for r in cursor.fetchall():
-        # In ODS: row 1 = title, row 2 = header, data starts at row 3
-        param_rows[r['name']] = r['rowid'] + 2  # +2 for title+header
+    # Parameter references from knob registry
+    ref_kwc_maison = get_param_ref('kwc_par_maison')
+    ref_n_maisons = get_param_ref('nombre_maisons')
+    ref_kwc_collectif = get_param_ref('kwc_par_collectif')
+    ref_n_collectifs = get_param_ref('nombre_collectifs')
+    ref_gwc_centrales = get_param_ref('solar_gwc_centrales')
+    ref_jours = get_param_ref('jours_par_mois')
 
     # Data rows: title=row1, header=row2, data starts row3
     row_num = 3
-    for mois in MOIS_ORDRE:
-        for plage in PLAGES:
+    slot_index = 0  # 0-based index into 60 rows (for calc_chauffage reference)
+    for mois_idx, mois in enumerate(MOIS_ORDRE):
+        for plage_idx, plage in enumerate(PLAGES):
             key = (mois, plage)
             vals = lookup.get(key, {})
             duree = DUREES[plage]
 
-            # Source sheet row: title=row1, header=row2, data starts row3
-            # Data rows in source sheets are in same order, so same row_num
+            # Source sheet row: same ordering as synthesis
             r = row_num
 
-            # Build formula cells
-            # Col indices: B=kwc_par_maison, C=facteurs_solaires
+            # Calc sheet row references:
+            # calc_chauffage: 60 data rows, row 3-62, column H = besoin_electrique_kw
+            chauffage_r = r  # Same row ordering
+            # calc_transport: 5 slot rows (row 3-7), column B = transport_kw
+            transport_slot_r = 3 + plage_idx  # Row per slot type
+            # calc_industrie: single value at row 3, column B = flat_kw
+            # calc_tertiaire: single value at row 3, column B = flat_kw
+            # calc_agriculture: 12 monthly rows (row 3-14), column B = kw
+            agriculture_month_r = 3 + mois_idx
+
             cells = [
                 # A: Period label (static)
                 {'value': f"{mois} {plage}"},
 
-                # B: PV maisons (kW)
-                # = kwc_par_maison * nombre_maisons * 1000 * capacity_factor
+                # B: PV maisons (kW) = kwc_par_maison * nombre_maisons * 1000 * capacity_factor
                 {
                     'value': vals.get('pv_maisons_kw', 0.0),
                     'formula': (
-                        f"of:=[parametres.B{param_rows.get('kwc_par_maison', 8)}]"
-                        f"*[parametres.B{param_rows.get('nombre_maisons', 6)}]"
+                        f"of:={ref_kwc_maison}"
+                        f"*{ref_n_maisons}"
                         f"*1000"
                         f"*[facteurs_solaires.C{r}]"
                     ),
@@ -108,18 +113,18 @@ def add_synthesis_sheet(writer: ODSWriter, db):
                 {
                     'value': vals.get('pv_collectif_kw', 0.0),
                     'formula': (
-                        f"of:=[parametres.B{param_rows.get('kwc_par_collectif', 9)}]"
-                        f"*[parametres.B{param_rows.get('nombre_collectifs', 7)}]"
+                        f"of:={ref_kwc_collectif}"
+                        f"*{ref_n_collectifs}"
                         f"*1000"
                         f"*[facteurs_solaires.C{r}]"
                     ),
                 },
 
-                # D: PV centrales (kW)
+                # D: PV centrales (kW) = GWc * 1e6 * capacity_factor
                 {
                     'value': vals.get('pv_centrales_kw', 0.0),
                     'formula': (
-                        f"of:=[parametres.B{param_rows.get('solar_gwc_centrales', 5)}]"
+                        f"of:={ref_gwc_centrales}"
                         f"*1000000"
                         f"*[facteurs_solaires.C{r}]"
                     ),
@@ -149,34 +154,34 @@ def add_synthesis_sheet(writer: ODSWriter, db):
                     'formula': f"of:=[.B{r}]+[.C{r}]+[.D{r}]+[.E{r}]+[.F{r}]+[.G{r}]",
                 },
 
-                # I: Chauffage (kW)
+                # I: Chauffage (kW) — from calc_chauffage sheet
                 {
                     'value': vals.get('chauffage_kw', 0.0),
-                    'formula': f"of:=[consommation_chauffage.E{r}]",
+                    'formula': f"of:=[calc_chauffage.H{chauffage_r}]",
                 },
 
-                # J: Transport (kW)
+                # J: Transport (kW) — from calc_transport sheet
                 {
                     'value': vals.get('transport_kw', 0.0),
-                    'formula': f"of:=[consommation_sectors.C{r}]",
+                    'formula': f"of:=[calc_transport.B{transport_slot_r}]",
                 },
 
-                # K: Industrie (kW)
+                # K: Industrie (kW) — flat value from calc_industrie
                 {
                     'value': vals.get('industrie_kw', 0.0),
-                    'formula': f"of:=[consommation_sectors.D{r}]",
+                    'formula': f"of:=[calc_industrie.B3]",
                 },
 
-                # L: Tertiaire (kW)
+                # L: Tertiaire (kW) — flat value from calc_tertiaire
                 {
                     'value': vals.get('tertiaire_kw', 0.0),
-                    'formula': f"of:=[consommation_sectors.E{r}]",
+                    'formula': f"of:=[calc_tertiaire.B3]",
                 },
 
-                # M: Agriculture (kW)
+                # M: Agriculture (kW) — monthly value from calc_agriculture
                 {
                     'value': vals.get('agriculture_kw', 0.0),
-                    'formula': f"of:=[consommation_sectors.F{r}]",
+                    'formula': f"of:=[calc_agriculture.B{agriculture_month_r}]",
                 },
 
                 # N: Total conso = I+J+K+L+M
@@ -199,7 +204,7 @@ def add_synthesis_sheet(writer: ODSWriter, db):
                     'value': vals.get('energie_gaz_twh', 0.0),
                     'formula': (
                         f"of:=[.O{r}]*[.P{r}]"
-                        f"*[parametres.B{param_rows.get('jours_par_mois', 11)}]"
+                        f"*{ref_jours}"
                         f"/1000000000"
                     ),
                 },
@@ -207,6 +212,7 @@ def add_synthesis_sheet(writer: ODSWriter, db):
 
             writer.add_formula_row(table, cells)
             row_num += 1
+            slot_index += 1
 
     # Monthly totals
     row_num_after_data = row_num

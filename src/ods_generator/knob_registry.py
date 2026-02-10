@@ -1,0 +1,1686 @@
+"""
+Knob Registry -- single source of truth for ODS parametres sheet.
+
+Maps every Python config parameter to its ODS row, providing:
+- Ordered REGISTRY list (position determines ODS row number)
+- Default values, units, sources, and descriptions
+- Forward/reverse lookup helpers for formula generation
+
+The first 13 entries are in a fixed order for backward compatibility
+with existing ODS formula references.  Category separators (CategoryEntry)
+appear in the ODS as section headers but are excluded from name-based lookups.
+
+Total: 142 KnobEntry data rows + category separators.
+"""
+
+from dataclasses import dataclass
+from typing import Dict, List, Set, Union
+
+
+# ---------------------------------------------------------------------------
+# Data classes
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class KnobEntry:
+    """One tuneable parameter row in the ODS parametres sheet."""
+    name: str           # Unique parametres sheet name (column A)
+    default_value: float  # Default value (column B)
+    unit: str           # Unit string (column C)
+    source: str         # Data source (column D)
+    description: str    # Description (column E)
+    category: str       # Category group
+    config_class: str   # Python class name
+    field_name: str     # Python field name
+
+
+@dataclass(frozen=True)
+class CategoryEntry:
+    """Section separator row in the ODS parametres sheet."""
+    label: str          # Category separator text
+
+
+# ---------------------------------------------------------------------------
+# REGISTRY -- ordered list; position determines ODS row
+# ---------------------------------------------------------------------------
+
+REGISTRY: List[Union[KnobEntry, CategoryEntry]] = [
+    # =================================================================
+    # First 13 entries -- FIXED ORDER (backward compatibility)
+    # =================================================================
+
+    # 1
+    KnobEntry(
+        name='solar_gwc_maisons',
+        default_value=200.0,
+        unit='GWc',
+        source='Hypothese modele',
+        description='Capacite solaire toitures maisons individuelles',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='solar_gwc_maisons',
+    ),
+    # 2
+    KnobEntry(
+        name='solar_gwc_collectif',
+        default_value=50.0,
+        unit='GWc',
+        source='Hypothese modele',
+        description='Capacite solaire toitures habitat collectif',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='solar_gwc_collectif',
+    ),
+    # 3
+    KnobEntry(
+        name='solar_gwc_centrales',
+        default_value=250.0,
+        unit='GWc',
+        source='Hypothese modele',
+        description='Capacite solaire centrales au sol',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='solar_gwc_centrales',
+    ),
+    # 4
+    KnobEntry(
+        name='nombre_maisons',
+        default_value=20000000,
+        unit='unites',
+        source='INSEE Recensement',
+        description='Nombre de maisons individuelles en France',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='nombre_maisons',
+    ),
+    # 5
+    KnobEntry(
+        name='nombre_collectifs',
+        default_value=10000000,
+        unit='unites',
+        source='INSEE Recensement',
+        description='Nombre de logements collectifs en France',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='nombre_collectifs',
+    ),
+    # 6
+    KnobEntry(
+        name='kwc_par_maison',
+        default_value=10.0,
+        unit='kWc',
+        source='Hypothese modele',
+        description='Puissance PV par maison individuelle',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='kwc_par_maison',
+    ),
+    # 7
+    KnobEntry(
+        name='kwc_par_collectif',
+        default_value=5.0,
+        unit='kWc',
+        source='Hypothese modele',
+        description='Puissance PV par logement collectif',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='kwc_par_collectif',
+    ),
+    # 8
+    KnobEntry(
+        name='cop_pac',
+        default_value=2.0,
+        unit='ratio',
+        source='ADEME estimation conservative',
+        description='COP pompe a chaleur (legacy, fixe)',
+        category='Consommation',
+        config_class='ConsumptionConfig',
+        field_name='heat_pump_cop',
+    ),
+    # 9
+    KnobEntry(
+        name='jours_par_mois',
+        default_value=30,
+        unit='jours',
+        source='Simplification modele',
+        description='Nombre de jours par mois (approximation)',
+        category='Temporel',
+        config_class='TemporalConfig',
+        field_name='jours_par_mois',
+    ),
+    # 10
+    KnobEntry(
+        name='solar_capacity_gwc',
+        default_value=500.0,
+        unit='GWc',
+        source='Hypothese modele',
+        description='Capacite solaire PV totale installee',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='solar_capacity_gwc',
+    ),
+    # 11
+    KnobEntry(
+        name='nuclear_min_gw',
+        default_value=30.0,
+        unit='GW',
+        source='RTE 2020',
+        description='Production nucleaire minimum (ete)',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='nuclear_min_gw',
+    ),
+    # 12
+    KnobEntry(
+        name='nuclear_max_gw',
+        default_value=50.0,
+        unit='GW',
+        source='RTE 2020',
+        description='Production nucleaire maximum (hiver)',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='nuclear_max_gw',
+    ),
+    # 13
+    KnobEntry(
+        name='hydro_avg_gw',
+        default_value=7.5,
+        unit='GW',
+        source='RTE 2020',
+        description='Production hydraulique moyenne',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='hydro_avg_gw',
+    ),
+
+    # =================================================================
+    # Production Extended
+    # =================================================================
+
+    KnobEntry(
+        name='solar_capacity_current_gwc',
+        default_value=20.0,
+        unit='GWc',
+        source='RTE 2024',
+        description='Capacite solaire actuelle en France',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='solar_capacity_current_gwc',
+    ),
+    KnobEntry(
+        name='prod_base_max_gw',
+        default_value=65.0,
+        unit='GW',
+        source='Calcul: nucleaire_max + hydro + marge',
+        description='Production de base maximum sans solaire',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='prod_base_max_gw',
+    ),
+    KnobEntry(
+        name='prod_solaire_max_gw',
+        default_value=150.0,
+        unit='GW',
+        source='Facteur de charge ~30% a 500 GWc',
+        description='Production solaire maximum theorique',
+        category='Production',
+        config_class='ProductionConfig',
+        field_name='prod_solaire_max_gw',
+    ),
+
+    # =================================================================
+    # Consommation (legacy)
+    # =================================================================
+
+    CategoryEntry('Consommation (legacy)'),
+
+    KnobEntry(
+        name='residential_heating_fraction',
+        default_value=0.67,
+        unit='fraction',
+        source='ADEME statistiques',
+        description='Fraction de la consommation residentielle pour le chauffage',
+        category='Consommation',
+        config_class='ConsumptionConfig',
+        field_name='residential_heating_fraction',
+    ),
+    KnobEntry(
+        name='transport_freight_factor',
+        default_value=0.4,
+        unit='ratio',
+        source='Hypothese modele (legacy)',
+        description='Facteur efficacite electrification fret (legacy)',
+        category='Consommation',
+        config_class='ConsumptionConfig',
+        field_name='transport_freight_factor',
+    ),
+    KnobEntry(
+        name='transport_passenger_factor',
+        default_value=0.2,
+        unit='ratio',
+        source='Hypothese modele (legacy)',
+        description='Facteur efficacite electrification passagers (legacy)',
+        category='Consommation',
+        config_class='ConsumptionConfig',
+        field_name='transport_passenger_factor',
+    ),
+
+    # =================================================================
+    # Stockage
+    # =================================================================
+
+    CategoryEntry('Stockage'),
+
+    KnobEntry(
+        name='battery_efficiency',
+        default_value=0.85,
+        unit='fraction',
+        source='Standard industrie Li-ion',
+        description='Rendement aller-retour stockage batterie',
+        category='Stockage',
+        config_class='StorageConfig',
+        field_name='battery_efficiency',
+    ),
+    KnobEntry(
+        name='step_grandmaison_gwh',
+        default_value=5.0,
+        unit='GWh',
+        source="Grand'Maison STEP",
+        description="Capacite STEP Grand'Maison (reference)",
+        category='Stockage',
+        config_class='StorageConfig',
+        field_name='step_grandmaison_gwh',
+    ),
+    KnobEntry(
+        name='moss_landing_gwh',
+        default_value=3.0,
+        unit='GWh',
+        source='Moss Landing Battery',
+        description='Capacite batterie Moss Landing (reference)',
+        category='Stockage',
+        config_class='StorageConfig',
+        field_name='moss_landing_gwh',
+    ),
+    KnobEntry(
+        name='france_step_total_gwh',
+        default_value=100.0,
+        unit='GWh',
+        source='RTE',
+        description='Capacite totale STEP en France',
+        category='Stockage',
+        config_class='StorageConfig',
+        field_name='france_step_total_gwh',
+    ),
+
+    # =================================================================
+    # Finances
+    # =================================================================
+
+    CategoryEntry('Finances'),
+
+    KnobEntry(
+        name='gas_cost_eur_per_mwh',
+        default_value=90.0,
+        unit='EUR/MWh',
+        source='CCGT cout marginal Europe 2024',
+        description='Cout du gaz (CCGT)',
+        category='Finances',
+        config_class='FinancialConfig',
+        field_name='gas_cost_eur_per_mwh',
+    ),
+    KnobEntry(
+        name='solar_capex_eur_per_kw',
+        default_value=600.0,
+        unit='EUR/kW',
+        source='IRENA Europe 2024',
+        description='CAPEX solaire PV',
+        category='Finances',
+        config_class='FinancialConfig',
+        field_name='solar_capex_eur_per_kw',
+    ),
+    KnobEntry(
+        name='storage_capex_eur_per_kwh',
+        default_value=200.0,
+        unit='EUR/kWh',
+        source='BNEF Europe 2024 (cle en main)',
+        description='CAPEX stockage batterie',
+        category='Finances',
+        config_class='FinancialConfig',
+        field_name='storage_capex_eur_per_kwh',
+    ),
+    KnobEntry(
+        name='solar_lifetime_years',
+        default_value=30,
+        unit='annees',
+        source='Standard industrie',
+        description='Duree de vie panneaux solaires',
+        category='Finances',
+        config_class='FinancialConfig',
+        field_name='solar_lifetime_years',
+    ),
+    KnobEntry(
+        name='storage_lifetime_years',
+        default_value=15,
+        unit='annees',
+        source='Standard industrie',
+        description='Duree de vie stockage batterie',
+        category='Finances',
+        config_class='FinancialConfig',
+        field_name='storage_lifetime_years',
+    ),
+    KnobEntry(
+        name='analysis_horizon_years',
+        default_value=30,
+        unit='annees',
+        source='Hypothese modele',
+        description="Horizon d'analyse financiere",
+        category='Finances',
+        config_class='FinancialConfig',
+        field_name='analysis_horizon_years',
+    ),
+
+    # =================================================================
+    # Industrie
+    # =================================================================
+
+    CategoryEntry('Industrie'),
+
+    KnobEntry(
+        name='ind_chaleur_haute_temp_twh',
+        default_value=60.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Chaleur haute temperature (>400C): acier, ciment, verre',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='chaleur_haute_temp_twh',
+    ),
+    KnobEntry(
+        name='ind_chaleur_moyenne_temp_twh',
+        default_value=40.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Chaleur moyenne temperature (100-400C): chimie, agroalimentaire',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='chaleur_moyenne_temp_twh',
+    ),
+    KnobEntry(
+        name='ind_chaleur_basse_temp_twh',
+        default_value=25.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Chaleur basse temperature (<100C): sechage, pasteurisation',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='chaleur_basse_temp_twh',
+    ),
+    KnobEntry(
+        name='ind_force_motrice_twh',
+        default_value=55.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Force motrice (moteurs, compresseurs) -- deja electrique',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='force_motrice_twh',
+    ),
+    KnobEntry(
+        name='ind_electrochimie_twh',
+        default_value=15.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Electrochimie, electrolyse -- deja electrique',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='electrochimie_twh',
+    ),
+    KnobEntry(
+        name='ind_autres_twh',
+        default_value=10.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Autres usages industriels (eclairage, IT)',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='autres_twh',
+    ),
+    KnobEntry(
+        name='ind_haute_temp_electrifiable',
+        default_value=0.30,
+        unit='fraction',
+        source='ADEME',
+        description='Fraction haute temperature electrifiable (arc electrique / H2)',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='haute_temp_electrifiable',
+    ),
+    KnobEntry(
+        name='ind_haute_temp_efficacite',
+        default_value=0.85,
+        unit='ratio',
+        source='ADEME',
+        description='Efficacite electrification haute temperature',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='haute_temp_efficacite',
+    ),
+    KnobEntry(
+        name='ind_moyenne_temp_electrifiable',
+        default_value=0.70,
+        unit='fraction',
+        source='ADEME',
+        description='Fraction moyenne temperature electrifiable (PAC industrielle)',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='moyenne_temp_electrifiable',
+    ),
+    KnobEntry(
+        name='ind_moyenne_temp_cop',
+        default_value=2.5,
+        unit='ratio',
+        source='ADEME',
+        description='COP PAC industrielle moyenne temperature',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='moyenne_temp_cop',
+    ),
+    KnobEntry(
+        name='ind_basse_temp_electrifiable',
+        default_value=0.90,
+        unit='fraction',
+        source='ADEME',
+        description='Fraction basse temperature electrifiable (PAC)',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='basse_temp_electrifiable',
+    ),
+    KnobEntry(
+        name='ind_basse_temp_cop',
+        default_value=3.5,
+        unit='ratio',
+        source='ADEME',
+        description='COP PAC industrielle basse temperature',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='basse_temp_cop',
+    ),
+    KnobEntry(
+        name='ind_gain_efficacite_fraction',
+        default_value=0.15,
+        unit='fraction',
+        source='ADEME estimation 15-20%',
+        description='Gain efficacite par optimisation des procedes',
+        category='Industrie',
+        config_class='IndustrieConfig',
+        field_name='gain_efficacite_fraction',
+    ),
+
+    # =================================================================
+    # Tertiaire
+    # =================================================================
+
+    CategoryEntry('Tertiaire'),
+
+    KnobEntry(
+        name='tert_chauffage_twh',
+        default_value=85.0,
+        unit='TWh',
+        source='SDES / CEREN 2022',
+        description='Chauffage tertiaire (bureaux, commerces, ecoles, hopitaux)',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='chauffage_twh',
+    ),
+    KnobEntry(
+        name='tert_climatisation_twh',
+        default_value=15.0,
+        unit='TWh',
+        source='SDES / CEREN 2022',
+        description='Climatisation tertiaire',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='climatisation_twh',
+    ),
+    KnobEntry(
+        name='tert_eclairage_twh',
+        default_value=30.0,
+        unit='TWh',
+        source='SDES / CEREN 2022',
+        description='Eclairage tertiaire',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='eclairage_twh',
+    ),
+    KnobEntry(
+        name='tert_electricite_specifique_twh',
+        default_value=45.0,
+        unit='TWh',
+        source='SDES / CEREN 2022',
+        description='Electricite specifique (IT, appareils, ascenseurs)',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='electricite_specifique_twh',
+    ),
+    KnobEntry(
+        name='tert_eau_chaude_twh',
+        default_value=15.0,
+        unit='TWh',
+        source='SDES / CEREN 2022',
+        description='Eau chaude sanitaire tertiaire',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='eau_chaude_twh',
+    ),
+    KnobEntry(
+        name='tert_autres_twh',
+        default_value=10.0,
+        unit='TWh',
+        source='SDES / CEREN 2022',
+        description='Autres consommations tertiaire',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='autres_twh',
+    ),
+    KnobEntry(
+        name='tert_chauffage_fossile_fraction',
+        default_value=0.60,
+        unit='fraction',
+        source='SDES / CEREN 2022',
+        description='Fraction chauffage tertiaire actuellement fossile (gaz, fioul)',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='chauffage_fossile_fraction',
+    ),
+    KnobEntry(
+        name='tert_chauffage_pac_cop',
+        default_value=3.0,
+        unit='ratio',
+        source='ADEME',
+        description='COP PAC chauffage tertiaire',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='chauffage_pac_cop',
+    ),
+    KnobEntry(
+        name='tert_eclairage_gain_led',
+        default_value=0.50,
+        unit='fraction',
+        source='ADEME',
+        description='Gain remplacement eclairage LED (reduction 50%)',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='eclairage_gain_led',
+    ),
+    KnobEntry(
+        name='tert_renovation_gain_chauffage',
+        default_value=0.30,
+        unit='fraction',
+        source='ADEME',
+        description='Gain renovation thermique sur chauffage (reduction 30%)',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='renovation_gain_chauffage',
+    ),
+    KnobEntry(
+        name='tert_climatisation_gain',
+        default_value=0.20,
+        unit='fraction',
+        source='ADEME',
+        description='Gain efficacite climatisation (reduction 20%)',
+        category='Tertiaire',
+        config_class='TertiaireConfig',
+        field_name='climatisation_gain',
+    ),
+
+    # =================================================================
+    # Transport
+    # =================================================================
+
+    CategoryEntry('Transport'),
+
+    KnobEntry(
+        name='tr_voitures_twh',
+        default_value=200.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022 / CCFA',
+        description='Consommation voitures particulieres (~38M vehicules)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='voitures_twh',
+    ),
+    KnobEntry(
+        name='tr_deux_roues_twh',
+        default_value=10.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Consommation 2-roues motorises',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='deux_roues_twh',
+    ),
+    KnobEntry(
+        name='tr_bus_cars_twh',
+        default_value=15.0,
+        unit='TWh',
+        source='SDES Bilan energetique 2022',
+        description='Consommation bus et cars (urbain + interurbain)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='bus_cars_twh',
+    ),
+    KnobEntry(
+        name='tr_voitures_facteur_elec',
+        default_value=0.33,
+        unit='ratio',
+        source='ADEME',
+        description='Facteur electrification voitures (rendement moteur EV vs ICE)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='voitures_facteur_electrification',
+    ),
+    KnobEntry(
+        name='tr_deux_roues_facteur_elec',
+        default_value=0.33,
+        unit='ratio',
+        source='ADEME',
+        description='Facteur electrification 2-roues',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='deux_roues_facteur_electrification',
+    ),
+    KnobEntry(
+        name='tr_bus_facteur_elec',
+        default_value=0.40,
+        unit='ratio',
+        source='ADEME',
+        description='Facteur electrification bus',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='bus_facteur_electrification',
+    ),
+    KnobEntry(
+        name='tr_report_modal_fraction',
+        default_value=0.15,
+        unit='fraction',
+        source='ADEME ZEN 2050, RTE M23',
+        description='Report modal voiture vers rail/bus/velo',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='report_modal_fraction',
+    ),
+    KnobEntry(
+        name='tr_poids_lourds_twh',
+        default_value=140.0,
+        unit='TWh',
+        source='SDES / CGDD Comptes transports 2022',
+        description='Consommation poids lourds (>3.5t)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='poids_lourds_twh',
+    ),
+    KnobEntry(
+        name='tr_vul_twh',
+        default_value=30.0,
+        unit='TWh',
+        source='SDES / CGDD Comptes transports 2022',
+        description='Consommation vehicules utilitaires legers (<3.5t)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='vul_twh',
+    ),
+    KnobEntry(
+        name='tr_pl_batterie_fraction',
+        default_value=0.40,
+        unit='fraction',
+        source='ADEME / France Hydrogene / RTE FE2050',
+        description='Fraction PL electrification batterie',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='pl_batterie_fraction',
+    ),
+    KnobEntry(
+        name='tr_pl_batterie_facteur',
+        default_value=0.35,
+        unit='ratio',
+        source='ADEME',
+        description='Facteur efficacite PL batterie',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='pl_batterie_facteur',
+    ),
+    KnobEntry(
+        name='tr_pl_hydrogene_fraction',
+        default_value=0.30,
+        unit='fraction',
+        source='ADEME / France Hydrogene / RTE FE2050',
+        description='Fraction PL electrification hydrogene',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='pl_hydrogene_fraction',
+    ),
+    KnobEntry(
+        name='tr_pl_hydrogene_facteur',
+        default_value=0.55,
+        unit='ratio',
+        source='ADEME / France Hydrogene',
+        description='Facteur efficacite PL hydrogene (electrolyse + pile)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='pl_hydrogene_facteur',
+    ),
+    KnobEntry(
+        name='tr_pl_fossile_residuel_fraction',
+        default_value=0.30,
+        unit='fraction',
+        source='ADEME / RTE FE2050',
+        description='Fraction PL fossile residuel (biocarburant / e-diesel)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='pl_fossile_residuel_fraction',
+    ),
+    KnobEntry(
+        name='tr_vul_facteur_elec',
+        default_value=0.35,
+        unit='ratio',
+        source='ADEME',
+        description='Facteur electrification VUL',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='vul_facteur_electrification',
+    ),
+    KnobEntry(
+        name='tr_vul_electrifiable_fraction',
+        default_value=0.90,
+        unit='fraction',
+        source='ADEME',
+        description='Fraction VUL electrifiable (livraison urbaine)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='vul_electrifiable_fraction',
+    ),
+    KnobEntry(
+        name='tr_rail_total_twh',
+        default_value=15.0,
+        unit='TWh',
+        source='SDES / SNCF Rapport annuel 2022',
+        description='Consommation ferroviaire totale',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='rail_total_twh',
+    ),
+    KnobEntry(
+        name='tr_rail_electrique_fraction',
+        default_value=0.80,
+        unit='fraction',
+        source='SNCF',
+        description='Fraction du rail deja electrique',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='rail_electrique_fraction',
+    ),
+    KnobEntry(
+        name='tr_rail_diesel_elec_fraction',
+        default_value=0.90,
+        unit='fraction',
+        source='SNCF / RTE FE2050',
+        description='Fraction du diesel ferroviaire electrifiable',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='rail_diesel_electrifiable_fraction',
+    ),
+    KnobEntry(
+        name='tr_rail_efficacite_elec',
+        default_value=0.50,
+        unit='ratio',
+        source='SNCF',
+        description='Efficacite electrification diesel ferroviaire',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='rail_efficacite_electrique',
+    ),
+    KnobEntry(
+        name='tr_aviation_domestique_twh',
+        default_value=8.0,
+        unit='TWh',
+        source='DGAC / CITEPA',
+        description='Consommation aviation domestique',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='aviation_domestique_twh',
+    ),
+    KnobEntry(
+        name='tr_aviation_international_twh',
+        default_value=52.0,
+        unit='TWh',
+        source='DGAC / CITEPA',
+        description='Consommation aviation internationale',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='aviation_international_twh',
+    ),
+    KnobEntry(
+        name='tr_aviation_report_tgv_fraction',
+        default_value=0.40,
+        unit='fraction',
+        source='Loi Climat et Resilience 2021',
+        description='Report modal aviation domestique vers TGV',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='aviation_domestique_report_tgv_fraction',
+    ),
+    KnobEntry(
+        name='tr_aviation_saf_fraction',
+        default_value=0.30,
+        unit='fraction',
+        source='ADEME, ICCT',
+        description='Fraction carburant aviation synthetique (SAF)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='aviation_saf_fraction',
+    ),
+    KnobEntry(
+        name='tr_aviation_saf_facteur_elec',
+        default_value=3.5,
+        unit='ratio',
+        source='ADEME, ICCT',
+        description='kWh_elec par kWh_kerosene (Fischer-Tropsch)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='aviation_saf_facteur_elec',
+    ),
+    KnobEntry(
+        name='tr_maritime_twh',
+        default_value=7.0,
+        unit='TWh',
+        source='SDES / DGITM',
+        description='Consommation maritime',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='maritime_twh',
+    ),
+    KnobEntry(
+        name='tr_fluvial_twh',
+        default_value=3.0,
+        unit='TWh',
+        source='SDES / DGITM',
+        description='Consommation fluviale',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='fluvial_twh',
+    ),
+    KnobEntry(
+        name='tr_maritime_elec_fraction',
+        default_value=0.30,
+        unit='fraction',
+        source='SDES / DGITM',
+        description='Fraction maritime electrifiable',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='maritime_electrifiable_fraction',
+    ),
+    KnobEntry(
+        name='tr_maritime_elec_facteur',
+        default_value=0.40,
+        unit='ratio',
+        source='ADEME',
+        description='Facteur electrification maritime',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='maritime_electrique_facteur',
+    ),
+    KnobEntry(
+        name='tr_fluvial_elec_fraction',
+        default_value=0.70,
+        unit='fraction',
+        source='SDES / DGITM',
+        description='Fraction fluviale electrifiable',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='fluvial_electrifiable_fraction',
+    ),
+    KnobEntry(
+        name='tr_fluvial_elec_facteur',
+        default_value=0.40,
+        unit='ratio',
+        source='ADEME',
+        description='Facteur electrification fluviale',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='fluvial_electrique_facteur',
+    ),
+    KnobEntry(
+        name='tr_gain_sobriete_fraction',
+        default_value=0.10,
+        unit='fraction',
+        source='ADEME sufficiency, negaWatt 2022',
+        description='Gain sobriete transport (teletravail, 110 km/h, allegement)',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='gain_sobriete_fraction',
+    ),
+
+    # =================================================================
+    # Transport - Profil recharge
+    # =================================================================
+
+    CategoryEntry('Transport - Profil recharge'),
+
+    KnobEntry(
+        name='tr_profil_8h13h',
+        default_value=0.15,
+        unit='fraction',
+        source='ENEDIS / RTE FE2050 recharge pilotee',
+        description='Profil recharge VE plage 8h-13h',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='profil_recharge:8h-13h',
+    ),
+    KnobEntry(
+        name='tr_profil_13h18h',
+        default_value=0.25,
+        unit='fraction',
+        source='ENEDIS / RTE FE2050 recharge pilotee',
+        description='Profil recharge VE plage 13h-18h',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='profil_recharge:13h-18h',
+    ),
+    KnobEntry(
+        name='tr_profil_18h20h',
+        default_value=0.20,
+        unit='fraction',
+        source='ENEDIS / RTE FE2050 recharge pilotee',
+        description='Profil recharge VE plage 18h-20h',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='profil_recharge:18h-20h',
+    ),
+    KnobEntry(
+        name='tr_profil_20h23h',
+        default_value=0.15,
+        unit='fraction',
+        source='ENEDIS / RTE FE2050 recharge pilotee',
+        description='Profil recharge VE plage 20h-23h',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='profil_recharge:20h-23h',
+    ),
+    KnobEntry(
+        name='tr_profil_23h8h',
+        default_value=0.25,
+        unit='fraction',
+        source='ENEDIS / RTE FE2050 recharge pilotee',
+        description='Profil recharge VE plage 23h-8h',
+        category='Transport',
+        config_class='TransportConfig',
+        field_name='profil_recharge:23h-8h',
+    ),
+
+    # =================================================================
+    # Agriculture
+    # =================================================================
+
+    CategoryEntry('Agriculture'),
+
+    KnobEntry(
+        name='agri_machinisme_twh',
+        default_value=30.0,
+        unit='TWh',
+        source='Agreste / SDES Bilan energetique 2022',
+        description='Machinisme agricole (tracteurs, moissonneuses) -- fossile',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='machinisme_twh',
+    ),
+    KnobEntry(
+        name='agri_serres_twh',
+        default_value=10.0,
+        unit='TWh',
+        source='ADEME',
+        description='Chauffage serres (gaz + electricite)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='serres_twh',
+    ),
+    KnobEntry(
+        name='agri_irrigation_twh',
+        default_value=3.0,
+        unit='TWh',
+        source='Agreste',
+        description='Pompage irrigation (electricite)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='irrigation_twh',
+    ),
+    KnobEntry(
+        name='agri_elevage_twh',
+        default_value=5.0,
+        unit='TWh',
+        source='ADEME',
+        description='Batiments elevage (ventilation, chauffage, traite)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='elevage_twh',
+    ),
+    KnobEntry(
+        name='agri_autres_twh',
+        default_value=2.0,
+        unit='TWh',
+        source='Agreste',
+        description='Autres usages agricoles (stockage, sechage, transformation)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='autres_twh',
+    ),
+    KnobEntry(
+        name='agri_machinisme_elec_fraction',
+        default_value=0.50,
+        unit='fraction',
+        source='Hypothese conservative',
+        description='Fraction machinisme electrifiable (tracteurs batterie)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='machinisme_electrifiable_fraction',
+    ),
+    KnobEntry(
+        name='agri_machinisme_eff_elec',
+        default_value=0.35,
+        unit='ratio',
+        source='ADEME',
+        description='Efficacite electrification machinisme (moteur elec vs diesel)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='machinisme_efficacite_electrique',
+    ),
+    KnobEntry(
+        name='agri_serres_pac_fraction',
+        default_value=0.80,
+        unit='fraction',
+        source='ADEME',
+        description='Fraction serres convertibles PAC',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='serres_pac_fraction',
+    ),
+    KnobEntry(
+        name='agri_serres_pac_cop',
+        default_value=3.0,
+        unit='ratio',
+        source='ADEME',
+        description='COP PAC serres',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='serres_pac_cop',
+    ),
+    KnobEntry(
+        name='agri_agrivoltaisme_gwc',
+        default_value=50.0,
+        unit='GWc',
+        source='ADEME etude 2023',
+        description='Potentiel agrivoltaisme (panneaux au-dessus des cultures)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='agrivoltaisme_potentiel_gwc',
+    ),
+    KnobEntry(
+        name='agri_methanisation_actuel_twh',
+        default_value=5.0,
+        unit='TWh',
+        source='ADEME',
+        description='Methanisation actuelle (biogaz dechets agricoles)',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='methanisation_actuel_twh',
+    ),
+    KnobEntry(
+        name='agri_methanisation_potentiel_twh',
+        default_value=30.0,
+        unit='TWh',
+        source='ADEME',
+        description='Potentiel methanisation agricole',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='methanisation_potentiel_twh',
+    ),
+
+    # =================================================================
+    # Agriculture - Profil mensuel
+    # =================================================================
+
+    CategoryEntry('Agriculture - Profil mensuel'),
+
+    KnobEntry(
+        name='agri_profil_janvier',
+        default_value=0.5,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole janvier',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Janvier',
+    ),
+    KnobEntry(
+        name='agri_profil_fevrier',
+        default_value=0.6,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole fevrier',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Février',
+    ),
+    KnobEntry(
+        name='agri_profil_mars',
+        default_value=0.8,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole mars',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Mars',
+    ),
+    KnobEntry(
+        name='agri_profil_avril',
+        default_value=1.0,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole avril',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Avril',
+    ),
+    KnobEntry(
+        name='agri_profil_mai',
+        default_value=1.3,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole mai',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Mai',
+    ),
+    KnobEntry(
+        name='agri_profil_juin',
+        default_value=1.5,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole juin',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Juin',
+    ),
+    KnobEntry(
+        name='agri_profil_juillet',
+        default_value=1.5,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole juillet',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Juillet',
+    ),
+    KnobEntry(
+        name='agri_profil_aout',
+        default_value=1.3,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole aout',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Août',
+    ),
+    KnobEntry(
+        name='agri_profil_septembre',
+        default_value=1.0,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole septembre',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Septembre',
+    ),
+    KnobEntry(
+        name='agri_profil_octobre',
+        default_value=0.8,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole octobre',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Octobre',
+    ),
+    KnobEntry(
+        name='agri_profil_novembre',
+        default_value=0.6,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole novembre',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Novembre',
+    ),
+    KnobEntry(
+        name='agri_profil_decembre',
+        default_value=0.5,
+        unit='coefficient',
+        source='Agreste profil saisonnier',
+        description='Coefficient consommation agricole decembre',
+        category='Agriculture',
+        config_class='AgricultureConfig',
+        field_name='profil_mensuel:Décembre',
+    ),
+
+    # =================================================================
+    # Chauffage (modele Roland)
+    # =================================================================
+
+    CategoryEntry('Chauffage (modele Roland)'),
+
+    KnobEntry(
+        name='chauf_surface_moyenne_m2',
+        default_value=120.0,
+        unit='m2',
+        source='ADEME / INSEE',
+        description='Surface moyenne maison individuelle',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='surface_moyenne_m2',
+    ),
+    KnobEntry(
+        name='chauf_hauteur_plafond_m',
+        default_value=2.5,
+        unit='m',
+        source='ADEME / INSEE',
+        description='Hauteur sous plafond moyenne',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='hauteur_plafond_m',
+    ),
+    KnobEntry(
+        name='chauf_coefficient_g',
+        default_value=0.65,
+        unit='W/m3/C',
+        source='RT 2005 / ADEME',
+        description='Coefficient G isolation (perte thermique par volume et degre)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='coefficient_g',
+    ),
+    KnobEntry(
+        name='chauf_temperature_int',
+        default_value=19.0,
+        unit='C',
+        source='ADEME recommandation',
+        description='Temperature interieure souhaitee',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperature_interieure',
+    ),
+
+    # =================================================================
+    # Chauffage - Temperatures exterieures
+    # =================================================================
+
+    CategoryEntry('Chauffage - Temperatures exterieures'),
+
+    KnobEntry(
+        name='temp_ext_janvier',
+        default_value=5.2,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne janvier',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Janvier',
+    ),
+    KnobEntry(
+        name='temp_ext_fevrier',
+        default_value=6.7,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne fevrier',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Février',
+    ),
+    KnobEntry(
+        name='temp_ext_mars',
+        default_value=9.1,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne mars',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Mars',
+    ),
+    KnobEntry(
+        name='temp_ext_avril',
+        default_value=11.4,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne avril',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Avril',
+    ),
+    KnobEntry(
+        name='temp_ext_mai',
+        default_value=15.3,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne mai',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Mai',
+    ),
+    KnobEntry(
+        name='temp_ext_juin',
+        default_value=19.8,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne juin',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Juin',
+    ),
+    KnobEntry(
+        name='temp_ext_juillet',
+        default_value=22.1,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne juillet',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Juillet',
+    ),
+    KnobEntry(
+        name='temp_ext_aout',
+        default_value=21.6,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne aout',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Août',
+    ),
+    KnobEntry(
+        name='temp_ext_septembre',
+        default_value=17.9,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne septembre',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Septembre',
+    ),
+    KnobEntry(
+        name='temp_ext_octobre',
+        default_value=13.8,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne octobre',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Octobre',
+    ),
+    KnobEntry(
+        name='temp_ext_novembre',
+        default_value=8.4,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne novembre',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Novembre',
+    ),
+    KnobEntry(
+        name='temp_ext_decembre',
+        default_value=5.8,
+        unit='C',
+        source='Statista / Meteo France 2021-2022',
+        description='Temperature exterieure moyenne decembre',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='temperatures_exterieures:Décembre',
+    ),
+
+    # =================================================================
+    # Chauffage - COP(T)
+    # =================================================================
+
+    CategoryEntry('Chauffage - COP(T)'),
+
+    KnobEntry(
+        name='cop_t_m15',
+        default_value=1.5,
+        unit='ratio',
+        source='ADEME / donnees constructeurs PAC air',
+        description='COP PAC a -15C (grand froid)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='cop_par_temperature:-15.0',
+    ),
+    KnobEntry(
+        name='cop_t_m10',
+        default_value=1.8,
+        unit='ratio',
+        source='ADEME / donnees constructeurs PAC air',
+        description='COP PAC a -10C (vague de froid)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='cop_par_temperature:-10.0',
+    ),
+    KnobEntry(
+        name='cop_t_m5',
+        default_value=2.1,
+        unit='ratio',
+        source='ADEME / donnees constructeurs PAC air',
+        description='COP PAC a -5C (hiver froid)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='cop_par_temperature:-5.0',
+    ),
+    KnobEntry(
+        name='cop_t_0',
+        default_value=2.5,
+        unit='ratio',
+        source='ADEME / donnees constructeurs PAC air',
+        description='COP PAC a 0C (gel)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='cop_par_temperature:0.0',
+    ),
+    KnobEntry(
+        name='cop_t_5',
+        default_value=3.0,
+        unit='ratio',
+        source='ADEME / donnees constructeurs PAC air',
+        description='COP PAC a 5C (hiver doux)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='cop_par_temperature:5.0',
+    ),
+    KnobEntry(
+        name='cop_t_10',
+        default_value=3.5,
+        unit='ratio',
+        source='ADEME / donnees constructeurs PAC air',
+        description='COP PAC a 10C (automne/printemps)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='cop_par_temperature:10.0',
+    ),
+    KnobEntry(
+        name='cop_t_15',
+        default_value=4.0,
+        unit='ratio',
+        source='ADEME / donnees constructeurs PAC air',
+        description='COP PAC a 15C (doux, chauffage marginal)',
+        category='Chauffage',
+        config_class='HeatingConfig',
+        field_name='cop_par_temperature:15.0',
+    ),
+
+    # =================================================================
+    # Chauffage - Coefficients plage horaire
+    # =================================================================
+
+    CategoryEntry('Chauffage - Coefficients plage horaire'),
+
+    KnobEntry(
+        name='coeff_plage_8h13h',
+        default_value=1.0,
+        unit='ratio',
+        source='Hypothese modele (occupation, thermostat)',
+        description='Coefficient chauffage plage 8h-13h (plein chauffage matin)',
+        category='Chauffage',
+        config_class='HeatingModule',
+        field_name='COEFFICIENTS_PLAGE:8h-13h',
+    ),
+    KnobEntry(
+        name='coeff_plage_13h18h',
+        default_value=0.8,
+        unit='ratio',
+        source='Hypothese modele (apports solaires, absences)',
+        description='Coefficient chauffage plage 13h-18h (legerement reduit)',
+        category='Chauffage',
+        config_class='HeatingModule',
+        field_name='COEFFICIENTS_PLAGE:13h-18h',
+    ),
+    KnobEntry(
+        name='coeff_plage_18h20h',
+        default_value=1.0,
+        unit='ratio',
+        source='Hypothese modele (retour domicile)',
+        description='Coefficient chauffage plage 18h-20h (plein chauffage soir)',
+        category='Chauffage',
+        config_class='HeatingModule',
+        field_name='COEFFICIENTS_PLAGE:18h-20h',
+    ),
+    KnobEntry(
+        name='coeff_plage_20h23h',
+        default_value=1.0,
+        unit='ratio',
+        source='Hypothese modele (soiree)',
+        description='Coefficient chauffage plage 20h-23h (plein chauffage soiree)',
+        category='Chauffage',
+        config_class='HeatingModule',
+        field_name='COEFFICIENTS_PLAGE:20h-23h',
+    ),
+    KnobEntry(
+        name='coeff_plage_23h8h',
+        default_value=0.7,
+        unit='ratio',
+        source='Hypothese modele (consigne nuit -2C)',
+        description='Coefficient chauffage plage 23h-8h (consigne reduite nuit)',
+        category='Chauffage',
+        config_class='HeatingModule',
+        field_name='COEFFICIENTS_PLAGE:23h-8h',
+    ),
+]
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+def _build_param_rows() -> Dict[str, int]:
+    """Build name -> ODS row mapping.
+
+    Row 1 = title, Row 2 = header, data starts Row 3.
+    Category rows count as rows but are not in the mapping.
+    """
+    result: Dict[str, int] = {}
+    ods_row = 3
+    for entry in REGISTRY:
+        if isinstance(entry, KnobEntry):
+            result[entry.name] = ods_row
+        ods_row += 1
+    return result
+
+
+PARAM_ROWS: Dict[str, int] = _build_param_rows()
+
+
+def get_param_ref(name: str) -> str:
+    """Return ODF formula reference like ``[parametres.B42]``."""
+    return f"[parametres.B{PARAM_ROWS[name]}]"
+
+
+def build_parametres_rows() -> list:
+    """Build rows for ``add_data_sheet()``.
+
+    Returns list of ``(name, value, unit, source, desc)`` tuples.
+    Category rows return ``(label, '', '', '', '')``.
+    """
+    rows = []
+    for entry in REGISTRY:
+        if isinstance(entry, KnobEntry):
+            rows.append((entry.name, entry.default_value, entry.unit,
+                         entry.source, entry.description))
+        else:
+            rows.append((entry.label, '', '', '', ''))
+    return rows
+
+
+def build_parametres_rows_from_configs(
+    config=None,
+    heating_config=None,
+    transport_config=None,
+    industrie_config=None,
+    tertiaire_config=None,
+    agriculture_config=None,
+) -> list:
+    """Build rows using live config values.
+
+    *config* is an ``EnergyModelConfig`` instance.
+    For dict fields (``field_name`` contains ``':'``), split on ``':'``
+    to obtain the dict attribute name and key.
+    """
+    configs = {
+        'ProductionConfig': getattr(config, 'production', None) if config else None,
+        'ConsumptionConfig': getattr(config, 'consumption', None) if config else None,
+        'TemporalConfig': getattr(config, 'temporal', None) if config else None,
+        'StorageConfig': getattr(config, 'storage', None) if config else None,
+        'FinancialConfig': getattr(config, 'financial', None) if config else None,
+        'HeatingConfig': heating_config,
+        'TransportConfig': transport_config,
+        'IndustrieConfig': industrie_config,
+        'TertiaireConfig': tertiaire_config,
+        'AgricultureConfig': agriculture_config,
+        'HeatingModule': None,  # Module-level constants, always use default
+    }
+
+    rows: list = []
+    for entry in REGISTRY:
+        if isinstance(entry, CategoryEntry):
+            rows.append((entry.label, '', '', '', ''))
+        else:
+            cfg = configs.get(entry.config_class)
+            value = entry.default_value
+            if cfg is not None:
+                if ':' in entry.field_name:
+                    attr_name, key = entry.field_name.split(':', 1)
+                    d = getattr(cfg, attr_name, None)
+                    if d is not None:
+                        # Key might be a float (for cop_par_temperature)
+                        try:
+                            key = float(key)
+                        except ValueError:
+                            pass
+                        value = d.get(key, entry.default_value)
+                else:
+                    value = getattr(cfg, entry.field_name, entry.default_value)
+            rows.append((entry.name, value, entry.unit, entry.source,
+                         entry.description))
+    return rows
+
+
+def registered_fields(config_class_name: str) -> Set[str]:
+    """Return set of field_name values registered for a config class."""
+    return {
+        e.field_name.split(':')[0] if ':' in e.field_name else e.field_name
+        for e in REGISTRY
+        if isinstance(e, KnobEntry) and e.config_class == config_class_name
+    }

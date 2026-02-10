@@ -60,4 +60,12 @@ def create_styles(doc):
     doc.automaticstyles.addElement(total)
     styles['total'] = total
 
+    # Category row style: bold, green-grey background (parameter grouping)
+    category = Style(name="category", family="table-cell")
+    category.addElement(TextProperties(fontweight="bold", color="#1F4E3D"))
+    category.addElement(TableCellProperties(backgroundcolor="#E2EFDA", padding="0.05in"))
+    category.addElement(ParagraphProperties(textalign="start"))
+    doc.automaticstyles.addElement(category)
+    styles['category'] = category
+
     return styles

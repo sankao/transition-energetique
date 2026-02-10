@@ -46,24 +46,26 @@ def download_data(year, cache_dir, db):
     print(f"      Stored {len(pvgis_rows)} rows of solar capacity factors")
 
 
-def compute_consumption(db, config):
+def compute_consumption(db, config, heating_config, transport_config,
+                        industrie_config, tertiaire_config, agriculture_config):
     """Step 2: Compute heating, transport, sector, agriculture consumption."""
     print("[2/5] Computing consumption models...")
 
-    # Parameters
-    db.store_parameters(config)
+    # Parameters (all 142 knobs via knob registry)
+    db.store_parameters(
+        config,
+        heating_config=heating_config,
+        transport_config=transport_config,
+        industrie_config=industrie_config,
+        tertiaire_config=tertiaire_config,
+        agriculture_config=agriculture_config,
+    )
 
     # Heating (60 rows via Roland model with COP(T))
-    heating_config = HeatingConfig()
     db.store_heating_data(heating_config)
     print("      Heating: 60 rows (COP variable)")
 
     # Sector consumption (transport, industry, tertiary, agriculture)
-    transport_config = TransportConfig()
-    industrie_config = IndustrieConfig()
-    tertiaire_config = TertiaireConfig()
-    agriculture_config = AgricultureConfig()
-
     db.store_sector_data(
         transport_config=transport_config,
         industrie_config=industrie_config,
@@ -146,12 +148,22 @@ def compute_synthesis(db, config):
     return total_gas_twh
 
 
-def generate_ods(db, output_path):
+def generate_ods(db, output_path, config=None, heating_config=None,
+                 transport_config=None, industrie_config=None,
+                 tertiaire_config=None, agriculture_config=None):
     """Step 4: Generate ODS file with source sheets and synthesis formulas."""
     print(f"[4/5] Generating ODS: {output_path}")
 
     writer = ODSWriter()
-    add_all_source_sheets(writer, db)
+    add_all_source_sheets(
+        writer, db,
+        config=config,
+        heating_config=heating_config,
+        transport_config=transport_config,
+        industrie_config=industrie_config,
+        tertiaire_config=tertiaire_config,
+        agriculture_config=agriculture_config,
+    )
     add_synthesis_sheet(writer, db)
     writer.save(output_path)
 
@@ -177,6 +189,11 @@ def main():
     args = parser.parse_args()
 
     config = EnergyModelConfig()
+    heating_config = HeatingConfig()
+    transport_config = TransportConfig()
+    industrie_config = IndustrieConfig()
+    tertiaire_config = TertiaireConfig()
+    agriculture_config = AgricultureConfig()
 
     print("=" * 60)
     print("Energy Transition Model — Data Pipeline")
@@ -192,13 +209,20 @@ def main():
         if not args.skip_download:
             download_data(args.year, args.cache_dir, db)
 
-        compute_consumption(db, config)
+        compute_consumption(db, config, heating_config, transport_config,
+                            industrie_config, tertiaire_config, agriculture_config)
         gas_total = compute_synthesis(db, config)
 
         if args.download_only:
             print("[4/5] Skipped ODS generation (--download-only)")
         else:
-            generate_ods(db, args.output)
+            generate_ods(db, args.output,
+                         config=config,
+                         heating_config=heating_config,
+                         transport_config=transport_config,
+                         industrie_config=industrie_config,
+                         tertiaire_config=tertiaire_config,
+                         agriculture_config=agriculture_config)
 
         db.store_metadata('pipeline_end', datetime.now().isoformat())
         db.store_metadata('gas_total_twh', f"{gas_total:.2f}")
