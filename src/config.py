@@ -99,25 +99,6 @@ class ProductionConfig:
     prod_solaire_max_gw: float = 150.0
 
 
-@dataclass
-class ConsumptionConfig:
-    """Consumption-side parameters."""
-
-    # Heat pump coefficient of performance (legacy, fixed value)
-    # For detailed temperature-dependent COP, use HeatingConfig in src/heating.py
-    # Source: Conservative estimate for air-source heat pumps
-    # Valid range: 2.0 - 4.0 depending on temperature
-    heat_pump_cop: float = 2.0
-
-    # Fraction of residential consumption that is heating
-    # Source: ADEME statistics
-    residential_heating_fraction: float = 0.67
-
-    # Transport electrification efficiency factors (legacy, simplified)
-    # For detailed modal breakdown, see TransportConfig in src/transport.py
-    transport_freight_factor: float = 0.4   # Thermal -> electric efficiency gain
-    transport_passenger_factor: float = 0.2  # Includes modal shift
-
 
 @dataclass
 class StorageConfig:
@@ -166,15 +147,15 @@ class EnergyModelConfig:
     All parameters are documented with units, valid ranges, and sources.
     Modify this configuration to run different scenarios.
 
+    Consumption parameters are now in src/consumption.py (ElectrificationParams).
+
     Example:
         config = EnergyModelConfig()
         config.production.solar_capacity_gwc = 700  # Test higher solar
-        config.consumption.heat_pump_cop = 3.0      # Better heat pumps
     """
 
     temporal: TemporalConfig = field(default_factory=TemporalConfig)
     production: ProductionConfig = field(default_factory=ProductionConfig)
-    consumption: ConsumptionConfig = field(default_factory=ConsumptionConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     financial: FinancialConfig = field(default_factory=FinancialConfig)
 
@@ -191,10 +172,6 @@ class EnergyModelConfig:
             errors.append("solar_capacity_gwc must be >= 0")
         if self.production.solar_capacity_gwc > 2000:
             errors.append("solar_capacity_gwc > 2000 GWc is unrealistic")
-
-        # Consumption validations
-        if not 1.5 <= self.consumption.heat_pump_cop <= 5.0:
-            errors.append("heat_pump_cop should be between 1.5 and 5.0")
 
         # Storage validations
         if not 0.5 <= self.storage.battery_efficiency <= 1.0:
@@ -221,17 +198,15 @@ PRODUCTION
   Hydro average: {self.production.hydro_avg_gw} GW
 
 CONSUMPTION
-  Heat pump COP: {self.consumption.heat_pump_cop}
-  Heating fraction: {self.consumption.residential_heating_fraction*100:.0f}%
-  Transport factors: freight={self.consumption.transport_freight_factor}, passenger={self.consumption.transport_passenger_factor}
+  See src/consumption.py (ElectrificationParams) for detailed parameters.
 
 STORAGE
   Battery efficiency: {self.storage.battery_efficiency*100:.0f}%
 
 FINANCIAL
-  Gas cost: €{self.financial.gas_cost_eur_per_mwh}/MWh
-  Solar CAPEX: €{self.financial.solar_capex_eur_per_kw}/kW
-  Storage CAPEX: €{self.financial.storage_capex_eur_per_kwh}/kWh
+  Gas cost: EUR {self.financial.gas_cost_eur_per_mwh}/MWh
+  Solar CAPEX: EUR {self.financial.solar_capex_eur_per_kw}/kW
+  Storage CAPEX: EUR {self.financial.storage_capex_eur_per_kwh}/kWh
   Analysis horizon: {self.financial.analysis_horizon_years} years
 """
 

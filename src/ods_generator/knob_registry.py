@@ -134,7 +134,7 @@ REGISTRY: List[Union[KnobEntry, CategoryEntry]] = [
         source='ADEME estimation conservative',
         description='COP pompe a chaleur (legacy, fixe)',
         category='Consommation',
-        config_class='ConsumptionConfig',
+        config_class='_legacy',
         field_name='heat_pump_cop',
     ),
     # 9
@@ -241,7 +241,7 @@ REGISTRY: List[Union[KnobEntry, CategoryEntry]] = [
         source='ADEME statistiques',
         description='Fraction de la consommation residentielle pour le chauffage',
         category='Consommation',
-        config_class='ConsumptionConfig',
+        config_class='_legacy',
         field_name='residential_heating_fraction',
     ),
     KnobEntry(
@@ -251,7 +251,7 @@ REGISTRY: List[Union[KnobEntry, CategoryEntry]] = [
         source='Hypothese modele (legacy)',
         description='Facteur efficacite electrification fret (legacy)',
         category='Consommation',
-        config_class='ConsumptionConfig',
+        config_class='_legacy',
         field_name='transport_freight_factor',
     ),
     KnobEntry(
@@ -261,7 +261,7 @@ REGISTRY: List[Union[KnobEntry, CategoryEntry]] = [
         source='Hypothese modele (legacy)',
         description='Facteur efficacite electrification passagers (legacy)',
         category='Consommation',
-        config_class='ConsumptionConfig',
+        config_class='_legacy',
         field_name='transport_passenger_factor',
     ),
 
@@ -1640,7 +1640,7 @@ def build_parametres_rows_from_configs(
     """
     configs = {
         'ProductionConfig': getattr(config, 'production', None) if config else None,
-        'ConsumptionConfig': getattr(config, 'consumption', None) if config else None,
+        '_legacy': None,  # ConsumptionConfig removed — see consumption.py
         'TemporalConfig': getattr(config, 'temporal', None) if config else None,
         'StorageConfig': getattr(config, 'storage', None) if config else None,
         'FinancialConfig': getattr(config, 'financial', None) if config else None,
