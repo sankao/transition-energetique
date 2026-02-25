@@ -370,6 +370,69 @@ def convert_tertiary(sector: SectorReference, params: ElectrificationParams) -> 
     )
 
 
+def convert_industry(sector: SectorReference, params: ElectrificationParams) -> SectorBalance:
+    """Convert industry sector to electrified scenario.
+
+    283 TWh current -> ~222 TWh target.
+    Three temperature tiers (HT/MT/BT) with different conversion strategies.
+    HT uses fraction-based allocation (electric arcs, H2 burners).
+    MT/BT use heat pumps (COP). Plus force motrice, electrochimie, etc.
+    """
+    usages = {u.name: u for u in sector.usages}
+
+    # --- Chaleur haute temperature (HT): fraction-based ---
+    ht = usages["chaleur_ht"]
+    ht_need = ht.total_twh * (1 - params.ind_ht_efficiency_gain)
+    ht_elec = ht_need * params.ind_ht_elec_fraction
+    ht_h2 = ht_need * params.ind_ht_h2_fraction
+    ht_fossil = params.ind_ht_fossil_residual_twh
+    ht_enr = ht.enr_twh  # biomass maintained at original level
+
+    # --- Chaleur moyenne temperature (MT): COP-based ---
+    mt = usages["chaleur_mt"]
+    mt_fossil = mt.gaz_twh + mt.petrole_twh + mt.charbon_twh
+    mt_elec = mt_fossil / params.ind_mt_cop + mt.reseau_twh / params.ind_mt_cop + mt.elec_twh
+    mt_h2 = params.ind_mt_h2_twh
+    mt_enr = mt.enr_twh  # biomass maintained
+
+    # --- Chaleur basse temperature (BT): COP-based ---
+    bt = usages["chaleur_bt"]
+    bt_fossil = bt.gaz_twh + bt.petrole_twh + bt.charbon_twh
+    bt_elec = bt_fossil / params.ind_bt_cop + bt.reseau_twh / params.ind_bt_cop + bt.elec_twh
+    bt_enr = bt.enr_twh  # biomass maintained
+
+    # --- Force motrice: mostly already electric, efficiency gains ---
+    fm = usages["force_motrice"]
+    fm_elec = fm.total_twh * (1 - params.ind_force_motrice_gain)
+
+    # --- Electrochimie: 100% electric, no change ---
+    ec_elec = usages["electrochimie"].elec_twh
+
+    # --- Eclairage industriel: all -> electric with LED gains ---
+    ei = usages["eclairage_it"]
+    ei_elec = ei.total_twh * (1 - params.ind_eclairage_gain)
+
+    # --- Autres: efficiency gains, mostly electric ---
+    au = usages["autres"]
+    au_reduced = au.total_twh * (1 - params.ind_autres_gain)
+    au_enr = au.enr_twh  # biomass maintained
+    au_elec = au_reduced - au_enr
+
+    total_elec = ht_elec + mt_elec + bt_elec + fm_elec + ec_elec + ei_elec + au_elec
+    total_h2 = ht_h2 + mt_h2
+    total_enr = ht_enr + mt_enr + bt_enr + au_enr
+    total_fossil = ht_fossil
+
+    return SectorBalance(
+        name="industry",
+        current_twh=sector.total_twh,
+        elec_twh=round(total_elec, 1),
+        h2_twh=round(total_h2, 1),
+        bio_enr_twh=round(total_enr, 1),
+        fossil_residual_twh=round(total_fossil, 1),
+    )
+
+
 @dataclass(frozen=True)
 class SectorBalance:
     """Electrification result for one sector."""
