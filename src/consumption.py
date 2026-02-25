@@ -516,6 +516,66 @@ def convert_transport(sector: SectorReference, params: ElectrificationParams) ->
     )
 
 
+def convert_agriculture(sector: SectorReference, params: ElectrificationParams) -> SectorBalance:
+    """Convert agriculture sector to electrified scenario.
+
+    55 TWh current -> ~36 TWh target.
+    Machinisme: EV tractors, H2 harvesters, biocarburants for remaining.
+    Serres/elevage: PAC for heating. Irrigation: already electric.
+    """
+    usages = {u.name: u for u in sector.usages}
+
+    # --- Machinisme (30 TWh) ---
+    ma = usages["machinisme"]
+    ma_elec = ma.total_twh * params.agr_machinisme_ev_fraction * params.agr_machinisme_ev_factor
+    # H2 fuel cells more efficient than ICE (factor ~0.70)
+    ma_h2 = ma.total_twh * params.agr_machinisme_h2_fraction * 0.70
+    # Biocarb: some efficiency gain from modern engines
+    ma_bio = ma.total_twh * params.agr_machinisme_biocarb_fraction * 0.78
+    ma_fossil = ma.total_twh * params.agr_machinisme_fossil_fraction
+
+    # --- Serres (7 TWh): fossil -> PAC ---
+    se = usages["serres"]
+    se_fossil = se.gaz_twh + se.petrole_twh
+    se_elec = se_fossil / params.agr_serres_cop + se.elec_twh
+    se_enr = se.enr_twh
+
+    # --- Irrigation (3 TWh): already electric ---
+    ir_elec = usages["irrigation"].elec_twh
+
+    # --- Elevage (5 TWh): fossil -> PAC + efficiency ---
+    el = usages["elevage"]
+    el_fossil = el.petrole_twh
+    el_elec = el_fossil / params.agr_elevage_cop + el.elec_twh * (1 - params.agr_elevage_efficiency_gain)
+    el_enr = el.enr_twh
+
+    # --- Sechage (3 TWh): from params ---
+    se2_elec = params.agr_sechage_elec_twh
+    se2_enr = usages["sechage"].enr_twh
+
+    # --- Peche (4 TWh): from params ---
+    pe_elec = params.agr_peche_elec_twh
+    pe_h2 = params.agr_peche_h2_twh
+    pe_fossil = params.agr_peche_fossil_twh
+
+    # --- Autres (3 TWh): from params ---
+    au_elec = params.agr_autres_elec_twh
+
+    total_elec = ma_elec + se_elec + ir_elec + el_elec + se2_elec + pe_elec + au_elec
+    total_h2 = ma_h2 + pe_h2
+    total_bio = ma_bio + se_enr + el_enr + se2_enr
+    total_fossil = ma_fossil + pe_fossil
+
+    return SectorBalance(
+        name="agriculture",
+        current_twh=sector.total_twh,
+        elec_twh=round(total_elec, 1),
+        h2_twh=round(total_h2, 1),
+        bio_enr_twh=round(total_bio, 1),
+        fossil_residual_twh=round(total_fossil, 1),
+    )
+
+
 @dataclass(frozen=True)
 class SectorBalance:
     """Electrification result for one sector."""

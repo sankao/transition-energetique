@@ -4,7 +4,7 @@ from src.consumption import (
     UsageReference, SectorReference, ReferenceData, sdes_2023,
     ElectrificationParams, SectorBalance, SystemBalance,
     convert_residential, convert_tertiary, convert_industry,
-    convert_transport,
+    convert_transport, convert_agriculture,
 )
 
 
@@ -269,3 +269,37 @@ class TestConvertTransport:
         base = convert_transport(ref.transport, ElectrificationParams())
         low = convert_transport(ref.transport, ElectrificationParams(tpt_vp_ev_factor=0.25))
         assert low.elec_twh < base.elec_twh
+
+
+class TestConvertAgriculture:
+    def test_electricity_approx_16(self):
+        ref = sdes_2023()
+        params = ElectrificationParams()
+        result = convert_agriculture(ref.agriculture, params)
+        assert result.elec_twh == pytest.approx(16, abs=3)
+
+    def test_h2_approx_5(self):
+        ref = sdes_2023()
+        result = convert_agriculture(ref.agriculture, ElectrificationParams())
+        assert result.h2_twh == pytest.approx(5, abs=2)
+
+    def test_bio_enr_approx_11(self):
+        ref = sdes_2023()
+        result = convert_agriculture(ref.agriculture, ElectrificationParams())
+        assert result.bio_enr_twh == pytest.approx(11, abs=3)
+
+    def test_fossil_approx_4(self):
+        ref = sdes_2023()
+        result = convert_agriculture(ref.agriculture, ElectrificationParams())
+        assert result.fossil_residual_twh == pytest.approx(4, abs=2)
+
+    def test_total_approx_36(self):
+        ref = sdes_2023()
+        result = convert_agriculture(ref.agriculture, ElectrificationParams())
+        assert result.total_target_twh == pytest.approx(36, abs=5)
+
+    def test_higher_ev_fraction_increases_electricity(self):
+        ref = sdes_2023()
+        base = convert_agriculture(ref.agriculture, ElectrificationParams())
+        high = convert_agriculture(ref.agriculture, ElectrificationParams(agr_machinisme_ev_fraction=0.60))
+        assert high.elec_twh > base.elec_twh
