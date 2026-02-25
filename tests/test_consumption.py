@@ -5,6 +5,7 @@ from src.consumption import (
     ElectrificationParams, SectorBalance, SystemBalance,
     convert_residential, convert_tertiary, convert_industry,
     convert_transport, convert_agriculture, convert_non_energy,
+    calculate_system_balance,
 )
 
 
@@ -337,3 +338,46 @@ class TestConvertNonEnergy:
         base = convert_non_energy(ref.non_energy, ElectrificationParams())
         high = convert_non_energy(ref.non_energy, ElectrificationParams(ne_petrochimie_recycling_gain=0.35))
         assert high.total_target_twh < base.total_target_twh
+
+
+class TestSystemBalance_Integration:
+    def test_total_electricity_approx_733(self):
+        balance = calculate_system_balance()
+        assert balance.total_electricity_twh == pytest.approx(733, abs=15)
+
+    def test_direct_electricity_approx_596(self):
+        balance = calculate_system_balance()
+        assert balance.direct_electricity_twh == pytest.approx(596, abs=10)
+
+    def test_h2_demand_approx_89(self):
+        balance = calculate_system_balance()
+        assert balance.h2_demand_twh == pytest.approx(89, abs=5)
+
+    def test_h2_production_elec_approx_137(self):
+        balance = calculate_system_balance()
+        assert balance.h2_production_elec_twh == pytest.approx(137, abs=15)
+
+    def test_fossil_residual_approx_105(self):
+        balance = calculate_system_balance()
+        assert balance.fossil_residual_twh == pytest.approx(105, abs=10)
+
+    def test_bio_enr_approx_220(self):
+        balance = calculate_system_balance()
+        assert balance.bio_enr_twh == pytest.approx(220, abs=15)
+
+    def test_current_total_is_1615(self):
+        balance = calculate_system_balance()
+        assert balance.current_total_twh == pytest.approx(1615, abs=1)
+
+    def test_all_sectors_present(self):
+        balance = calculate_system_balance()
+        assert len(balance.sectors) == 6
+        expected = {"residential", "tertiary", "industry", "transport", "agriculture", "non_energy"}
+        assert set(balance.sectors.keys()) == expected
+
+    def test_custom_params_change_result(self):
+        base = calculate_system_balance()
+        custom = calculate_system_balance(
+            params=ElectrificationParams(res_chauffage_cop=5.0)
+        )
+        assert custom.total_electricity_twh < base.total_electricity_twh

@@ -263,6 +263,30 @@ class ElectrificationParams:
     ccgt_efficiency: float = 0.55
 
 
+def calculate_system_balance(
+    ref: ReferenceData | None = None,
+    params: ElectrificationParams | None = None,
+) -> SystemBalance:
+    """Calculate complete system balance from reference data and parameters.
+
+    This is the single source of truth for all consumption figures.
+    """
+    if ref is None:
+        ref = sdes_2023()
+    if params is None:
+        params = ElectrificationParams()
+
+    sectors = {
+        "residential": convert_residential(ref.residential, params),
+        "tertiary": convert_tertiary(ref.tertiary, params),
+        "industry": convert_industry(ref.industry, params),
+        "transport": convert_transport(ref.transport, params),
+        "agriculture": convert_agriculture(ref.agriculture, params),
+        "non_energy": convert_non_energy(ref.non_energy, params),
+    }
+    return SystemBalance.from_sectors(sectors, params.electrolyse_efficiency)
+
+
 def convert_residential(sector: SectorReference, params: ElectrificationParams) -> SectorBalance:
     """Convert residential sector to electrified scenario.
 
