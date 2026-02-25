@@ -423,3 +423,46 @@ def resume_transport(
     ]
 
     return '\n'.join(lines)
+
+
+def profil_recharge_normalise(
+    config: Optional[TransportConfig] = None,
+) -> list[list[float]]:
+    """Return a 12x5 normalized EV charging profile.
+
+    12 months x 5 time slots, all 60 values summing to 1.0.
+    Uses the charging profile from TransportConfig for daily distribution
+    and assumes flat monthly variation (transport is roughly constant
+    year-round). The TOTAL TWh comes from consumption.py, not from
+    this function.
+
+    Time slots: 8h-13h(0), 13h-18h(1), 18h-20h(2), 20h-23h(3), 23h-8h(4)
+
+    Args:
+        config: Transport configuration (uses defaults if None)
+
+    Returns:
+        List of 12 lists, each with 5 floats; grand total = 1.0
+    """
+    if config is None:
+        config = TransportConfig()
+
+    # Extract daily slot distribution from config
+    slot_keys = ['8h-13h', '13h-18h', '18h-20h', '20h-23h', '23h-8h']
+    daily_raw = [config.profil_recharge.get(k, 0.0) for k in slot_keys]
+
+    # Normalize daily profile to sum to 1.0 (should already be ~1.0)
+    daily_total = sum(daily_raw)
+    if daily_total == 0:
+        daily_norm = [0.2] * 5
+    else:
+        daily_norm = [v / daily_total for v in daily_raw]
+
+    # Flat monthly distribution: each month gets 1/12 of the year
+    monthly_weight = 1.0 / 12.0
+
+    # Build 12x5 matrix: each cell = monthly_weight * daily_slot_fraction
+    return [
+        [monthly_weight * slot for slot in daily_norm]
+        for _ in range(12)
+    ]
