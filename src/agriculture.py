@@ -285,3 +285,32 @@ def resume_agriculture(config: Optional[AgricultureConfig] = None) -> str:
     ]
 
     return '\n'.join(lines)
+
+
+def profil_agriculture_normalise(
+    config: Optional[AgricultureConfig] = None,
+) -> list[float]:
+    """Return 12 monthly coefficients summing to 1.0.
+
+    Uses the seasonal profile from AgricultureConfig (summer-dominant
+    for irrigation and harvest). The TOTAL TWh comes from consumption.py,
+    not from this function.
+
+    Args:
+        config: Agriculture configuration (uses defaults if None)
+
+    Returns:
+        List of 12 floats (Jan..Dec) summing to 1.0
+    """
+    if config is None:
+        config = AgricultureConfig()
+
+    mois_ordre = (
+        'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+    )
+    values = [config.profil_mensuel.get(m, 1.0) for m in mois_ordre]
+    total = sum(values)
+    if total == 0:
+        return [1 / 12] * 12
+    return [v / total for v in values]

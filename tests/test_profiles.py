@@ -2,6 +2,7 @@
 import pytest
 from src.heating import profil_chauffage_normalise
 from src.transport import profil_recharge_normalise
+from src.agriculture import profil_agriculture_normalise
 
 
 class TestHeatingProfile:
@@ -41,3 +42,20 @@ class TestTransportProfile:
         profil = profil_recharge_normalise()
         jan = profil[0]
         assert jan[4] > jan[0]  # night > morning
+
+
+class TestAgricultureProfile:
+    def test_sums_to_one(self):
+        profil = profil_agriculture_normalise()
+        assert sum(profil) == pytest.approx(1.0, abs=0.001)
+
+    def test_returns_12_months(self):
+        profil = profil_agriculture_normalise()
+        assert len(profil) == 12
+
+    def test_summer_dominant(self):
+        """Agriculture peaks in summer (irrigation, harvest)."""
+        profil = profil_agriculture_normalise()
+        summer = profil[5] + profil[6] + profil[7]  # jun,jul,aug
+        winter = profil[0] + profil[1] + profil[11]  # jan,feb,dec
+        assert summer > winter
