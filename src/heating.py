@@ -369,3 +369,30 @@ def resume_chauffage(config: Optional[HeatingConfig] = None) -> str:
     lines.append(f"  Écart: {total - total_old:+.1f} TWh ({(total/total_old - 1)*100:+.1f}%)")
 
     return '\n'.join(lines)
+
+
+def profil_chauffage_normalise(config: Optional[HeatingConfig] = None) -> list[float]:
+    """Return 12 monthly coefficients summing to 1.0.
+
+    Uses the Roland 7-variable model to compute relative heating demand
+    per month, then normalizes. The TOTAL TWh comes from consumption.py,
+    not from this function.
+
+    Args:
+        config: Heating configuration (uses defaults if None)
+
+    Returns:
+        List of 12 floats (Jan..Dec) summing to 1.0
+    """
+    if config is None:
+        config = HeatingConfig()
+    bilan = bilan_chauffage_annuel(config)
+    mois_ordre = (
+        'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+    )
+    values = [bilan[m]['energie_mensuelle_twh'] for m in mois_ordre]
+    total = sum(values)
+    if total == 0:
+        return [1 / 12] * 12
+    return [v / total for v in values]
