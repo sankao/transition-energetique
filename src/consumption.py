@@ -576,6 +576,64 @@ def convert_agriculture(sector: SectorReference, params: ElectrificationParams) 
     )
 
 
+def convert_non_energy(sector: SectorReference, params: ElectrificationParams) -> SectorBalance:
+    """Convert non-energy sector to electrified scenario.
+
+    113 TWh current -> ~95 TWh target.
+    Feedstock substitution: recycling, bio-based, H2-based chemistry.
+    No COP — these are material inputs, not heat.
+    """
+    usages = {u.name: u for u in sector.usages}
+
+    # --- Petrochimie (60 TWh): recycling + bio + H2 + elec ---
+    pc = usages["petrochimie"]
+    pc_reduced = pc.total_twh * (1 - params.ne_petrochimie_recycling_gain)
+    pc_bio = pc_reduced * params.ne_petrochimie_bio_fraction
+    pc_h2 = pc_reduced * params.ne_petrochimie_h2_fraction
+    pc_elec = params.ne_petrochimie_elec_twh
+    pc_fossil = pc_reduced - pc_bio - pc_h2 - pc_elec
+
+    # --- Engrais (18 TWh): H2 vert replaces gas ---
+    en_h2 = params.ne_engrais_h2_twh
+    en_fossil = params.ne_engrais_fossil_twh
+
+    # --- Bitumes (15 TWh): recycling + bio ---
+    bi = usages["bitumes"]
+    bi_reduced = bi.total_twh * (1 - params.ne_bitumes_recycling_gain)
+    bi_bio = bi_reduced * params.ne_bitumes_bio_fraction
+    bi_fossil = bi_reduced - bi_bio
+
+    # --- Lubrifiants (5 TWh): bio substitution ---
+    lu = usages["lubrifiants"]
+    lu_bio = lu.total_twh * params.ne_lubrifiants_bio_fraction
+    lu_fossil = lu.total_twh - lu_bio
+
+    # --- Solvants (5 TWh): green chemistry ---
+    so = usages["solvants"]
+    so_bio = so.total_twh * params.ne_solvants_green_fraction
+    so_fossil = so.total_twh - so_bio
+
+    # --- Autres (10 TWh): from params ---
+    au_elec = params.ne_autres_elec_twh
+    au_h2 = params.ne_autres_h2_twh
+    au_bio = params.ne_autres_bio_twh
+    au_fossil = params.ne_autres_fossil_twh
+
+    total_elec = pc_elec + au_elec
+    total_h2 = pc_h2 + en_h2 + au_h2
+    total_bio = pc_bio + bi_bio + lu_bio + so_bio + au_bio
+    total_fossil = pc_fossil + en_fossil + bi_fossil + lu_fossil + so_fossil + au_fossil
+
+    return SectorBalance(
+        name="non_energy",
+        current_twh=sector.total_twh,
+        elec_twh=round(total_elec, 1),
+        h2_twh=round(total_h2, 1),
+        bio_enr_twh=round(total_bio, 1),
+        fossil_residual_twh=round(total_fossil, 1),
+    )
+
+
 @dataclass(frozen=True)
 class SectorBalance:
     """Electrification result for one sector."""

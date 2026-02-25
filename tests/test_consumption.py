@@ -4,7 +4,7 @@ from src.consumption import (
     UsageReference, SectorReference, ReferenceData, sdes_2023,
     ElectrificationParams, SectorBalance, SystemBalance,
     convert_residential, convert_tertiary, convert_industry,
-    convert_transport, convert_agriculture,
+    convert_transport, convert_agriculture, convert_non_energy,
 )
 
 
@@ -303,3 +303,37 @@ class TestConvertAgriculture:
         base = convert_agriculture(ref.agriculture, ElectrificationParams())
         high = convert_agriculture(ref.agriculture, ElectrificationParams(agr_machinisme_ev_fraction=0.60))
         assert high.elec_twh > base.elec_twh
+
+
+class TestConvertNonEnergy:
+    def test_electricity_approx_5(self):
+        ref = sdes_2023()
+        params = ElectrificationParams()
+        result = convert_non_energy(ref.non_energy, params)
+        assert result.elec_twh == pytest.approx(5, abs=2)
+
+    def test_h2_approx_28(self):
+        ref = sdes_2023()
+        result = convert_non_energy(ref.non_energy, ElectrificationParams())
+        assert result.h2_twh == pytest.approx(28, abs=3)
+
+    def test_bio_approx_27(self):
+        ref = sdes_2023()
+        result = convert_non_energy(ref.non_energy, ElectrificationParams())
+        assert result.bio_enr_twh == pytest.approx(27, abs=3)
+
+    def test_fossil_approx_35(self):
+        ref = sdes_2023()
+        result = convert_non_energy(ref.non_energy, ElectrificationParams())
+        assert result.fossil_residual_twh == pytest.approx(35, abs=3)
+
+    def test_total_approx_95(self):
+        ref = sdes_2023()
+        result = convert_non_energy(ref.non_energy, ElectrificationParams())
+        assert result.total_target_twh == pytest.approx(95, abs=5)
+
+    def test_higher_recycling_reduces_total(self):
+        ref = sdes_2023()
+        base = convert_non_energy(ref.non_energy, ElectrificationParams())
+        high = convert_non_energy(ref.non_energy, ElectrificationParams(ne_petrochimie_recycling_gain=0.35))
+        assert high.total_target_twh < base.total_target_twh
