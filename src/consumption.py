@@ -433,6 +433,89 @@ def convert_industry(sector: SectorReference, params: ElectrificationParams) -> 
     )
 
 
+def convert_transport(sector: SectorReference, params: ElectrificationParams) -> SectorBalance:
+    """Convert transport sector to electrified scenario.
+
+    513 TWh current -> ~245 TWh target.
+    Modal shift, sobriety, EV conversion for cars/trucks/vans.
+    H2 for heavy-duty and aviation. Biocarburants for residual.
+    """
+    usages = {u.name: u for u in sector.usages}
+
+    # --- Voitures (200 TWh) ---
+    vp = usages["voitures"]
+    vp_demand = vp.total_twh * (1 - params.tpt_vp_modal_shift) * (1 - params.tpt_vp_sobriety)
+    vp_ev = vp_demand * params.tpt_vp_ev_fraction
+    vp_elec = vp_ev * params.tpt_vp_ev_factor
+    vp_non_ev = vp_demand - vp_ev
+    vp_bio = vp_non_ev * 0.58
+    vp_fossil = vp_non_ev - vp_bio
+
+    # --- Poids lourds (140 TWh) ---
+    pl = usages["poids_lourds"]
+    pl_demand = pl.total_twh * (1 - params.tpt_pl_rail_shift)
+    pl_elec = pl_demand * params.tpt_pl_battery_fraction * params.tpt_pl_battery_factor
+    pl_h2 = pl_demand * params.tpt_pl_h2_fraction * params.tpt_pl_h2_factor
+    pl_bio = pl_demand * params.tpt_pl_biocarb_fraction
+    pl_fossil = pl_demand * params.tpt_pl_fossil_fraction
+
+    # --- VUL (40 TWh) ---
+    vul = usages["vul"]
+    vul_demand = vul.total_twh * (1 - params.tpt_vul_sobriety)
+    vul_elec = vul_demand * params.tpt_vul_ev_factor
+    vul_bio = 0.5  # small residual biocarb
+
+    # --- Deux roues (10 TWh) ---
+    dr_elec = usages["deux_roues"].total_twh * params.tpt_deux_roues_ev_factor
+
+    # --- Bus/cars (15 TWh): from params ---
+    bus_elec = params.tpt_bus_elec_twh
+    bus_h2 = params.tpt_bus_h2_twh
+    bus_bio = 1.0  # residual biogas buses
+
+    # --- Ferroviaire (15 TWh): from params ---
+    rail_elec = params.tpt_rail_elec_twh
+    rail_h2 = params.tpt_rail_h2_twh
+
+    # --- Aviation domestique (10 TWh) ---
+    avd = usages["aviation_dom"]
+    avd_demand = avd.total_twh * (1 - params.tpt_avia_dom_modal_shift)
+    avd_elec = params.tpt_avia_dom_elec_twh
+    avd_bio = params.tpt_avia_dom_biocarb_twh
+
+    # --- Aviation internationale (55 TWh) ---
+    avi = usages["aviation_intl"]
+    avi_demand = avi.total_twh * (1 - params.tpt_avia_intl_sobriety)
+    avi_h2 = params.tpt_avia_intl_h2_twh
+    avi_bio = params.tpt_avia_intl_biocarb_twh
+    avi_fossil = params.tpt_avia_intl_fossil_twh
+
+    # --- Maritime/fluvial (18 TWh): from params ---
+    mar_elec = params.tpt_maritime_elec_twh
+    mar_h2 = params.tpt_maritime_h2_twh
+    mar_bio = params.tpt_maritime_biocarb_twh
+    mar_fossil = params.tpt_maritime_fossil_twh
+
+    # --- Autres (10 TWh): from params ---
+    aut_elec = params.tpt_autres_elec_twh
+
+    total_elec = (vp_elec + pl_elec + vul_elec + dr_elec + bus_elec
+                  + rail_elec + avd_elec + mar_elec + aut_elec)
+    total_h2 = pl_h2 + bus_h2 + rail_h2 + avi_h2 + mar_h2
+    total_bio = (vp_bio + pl_bio + vul_bio + bus_bio
+                 + avd_bio + avi_bio + mar_bio)
+    total_fossil = vp_fossil + pl_fossil + avi_fossil + mar_fossil
+
+    return SectorBalance(
+        name="transport",
+        current_twh=sector.total_twh,
+        elec_twh=round(total_elec, 1),
+        h2_twh=round(total_h2, 1),
+        bio_enr_twh=round(total_bio, 1),
+        fossil_residual_twh=round(total_fossil, 1),
+    )
+
+
 @dataclass(frozen=True)
 class SectorBalance:
     """Electrification result for one sector."""
