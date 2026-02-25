@@ -2,6 +2,8 @@
 Sensitivity analysis module for the Energy Transition Model.
 
 Functions to analyze how gas backup needs vary with solar capacity.
+Demand figures come from the DataFrame (time-slot level consumption)
+which should be calibrated against consumption.py system balance (~729 TWh).
 """
 
 from typing import Dict, List, Optional, Tuple
