@@ -313,6 +313,63 @@ def convert_residential(sector: SectorReference, params: ElectrificationParams) 
     )
 
 
+def convert_tertiary(sector: SectorReference, params: ElectrificationParams) -> SectorBalance:
+    """Convert tertiary sector to electrified scenario.
+
+    229 TWh current -> ~130 TWh target.
+    Renovation reduces heating demand. Fossil heating -> PAC.
+    LED lighting, efficient appliances, induction cooking.
+    """
+    usages = {u.name: u for u in sector.usages}
+
+    # Chauffage: renovation -30%, then fossil -> PAC
+    ch = usages["chauffage"]
+    reno = 1 - params.ter_renovation_gain
+    ch_fossil = (ch.gaz_twh + ch.petrole_twh) * reno
+    ch_elec = ch_fossil / params.ter_chauffage_cop + ch.elec_twh * reno
+    ch_enr = ch.enr_twh * reno  # biomass reduced by renovation
+
+    # Clim/ventilation: efficiency gains
+    cv = usages["clim_ventilation"]
+    cv_elec = cv.elec_twh * (1 - params.ter_clim_gain)
+
+    # Eclairage: LED replacement
+    ec = usages["eclairage"]
+    ec_elec = ec.elec_twh * (1 - params.ter_led_gain)
+
+    # Elec specifique: efficiency gains
+    es = usages["elec_specifique"]
+    es_elec = es.elec_twh * (1 - params.ter_elec_specifique_gain)
+
+    # ECS: fossil -> PAC thermodynamique
+    ecs = usages["ecs"]
+    ecs_fossil = ecs.gaz_twh + ecs.petrole_twh
+    ecs_elec = ecs_fossil / params.ter_ecs_cop + ecs.elec_twh
+
+    # Cuisson: gas+oil -> induction
+    cu = usages["cuisson"]
+    cu_fossil = cu.gaz_twh + cu.petrole_twh
+    cu_elec = cu.elec_twh + cu_fossil * 0.80
+
+    # Autres: general efficiency, some fossil residual
+    au = usages["autres"]
+    au_reduced = au.total_twh * (1 - params.ter_autres_gain)
+    au_fossil = params.ter_autres_fossil_residual_twh
+    au_elec = au_reduced - au_fossil
+
+    total_elec = ch_elec + cv_elec + ec_elec + es_elec + ecs_elec + cu_elec + au_elec
+    total_enr = ch_enr
+
+    return SectorBalance(
+        name="tertiary",
+        current_twh=sector.total_twh,
+        elec_twh=round(total_elec, 1),
+        h2_twh=0,
+        bio_enr_twh=round(total_enr, 1),
+        fossil_residual_twh=round(au_fossil, 1),
+    )
+
+
 @dataclass(frozen=True)
 class SectorBalance:
     """Electrification result for one sector."""
