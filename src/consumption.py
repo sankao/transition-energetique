@@ -263,6 +263,56 @@ class ElectrificationParams:
     ccgt_efficiency: float = 0.55
 
 
+def convert_residential(sector: SectorReference, params: ElectrificationParams) -> SectorBalance:
+    """Convert residential sector to electrified scenario.
+
+    422 TWh current -> ~282 TWh target.
+    Fossil heating/ECS replaced by PAC (heat pumps).
+    Some wood heating also switches to PAC.
+    Cooking switches to induction. Efficiency gains on appliances.
+    """
+    usages = {u.name: u for u in sector.usages}
+
+    # Chauffage: fossil -> PAC, most bois maintained, reseau maintained
+    ch = usages["chauffage"]
+    ch_fossil = ch.gaz_twh + ch.petrole_twh + ch.charbon_twh
+    # A fraction of wood heating also switches to PAC
+    bois_to_pac = ch.enr_twh * 0.12
+    ch_elec = (ch_fossil / params.res_chauffage_cop
+               + ch.elec_twh * 0.7
+               + bois_to_pac / params.res_chauffage_cop)
+    ch_enr = (ch.enr_twh - bois_to_pac) + ch.reseau_twh
+
+    # ECS: fossil -> PAC thermodynamique
+    ecs = usages["ecs"]
+    ecs_fossil = ecs.gaz_twh + ecs.petrole_twh
+    ecs_elec = ecs_fossil / params.res_ecs_cop + ecs.elec_twh
+    ecs_enr = ecs.enr_twh + ecs.reseau_twh
+
+    # Elec specifique: efficiency gains
+    es = usages["elec_specifique"]
+    es_elec = es.elec_twh * (1 - params.res_elec_specifique_gain)
+
+    # Cuisson: gas -> induction
+    cu = usages["cuisson"]
+    cu_elec = cu.elec_twh + cu.gaz_twh * (1 - params.res_cuisson_gain_induction)
+
+    # Climatisation: maintained + growth
+    cl_elec = usages["climatisation"].elec_twh + params.res_clim_growth_twh
+
+    total_elec = ch_elec + ecs_elec + es_elec + cu_elec + cl_elec
+    total_enr = ch_enr + ecs_enr
+
+    return SectorBalance(
+        name="residential",
+        current_twh=sector.total_twh,
+        elec_twh=round(total_elec, 1),
+        h2_twh=0,
+        bio_enr_twh=round(total_enr, 1),
+        fossil_residual_twh=0,
+    )
+
+
 @dataclass(frozen=True)
 class SectorBalance:
     """Electrification result for one sector."""

@@ -3,6 +3,7 @@ import pytest
 from src.consumption import (
     UsageReference, SectorReference, ReferenceData, sdes_2023,
     ElectrificationParams, SectorBalance, SystemBalance,
+    convert_residential,
 )
 
 
@@ -131,3 +132,37 @@ class TestSystemBalance:
         assert sb.total_electricity_twh == pytest.approx(130 + 30 / 0.65, abs=0.5)
         assert sb.bio_enr_twh == 90
         assert sb.fossil_residual_twh == 50
+
+
+class TestConvertResidential:
+    def test_electricity_approx_175(self):
+        ref = sdes_2023()
+        params = ElectrificationParams()
+        result = convert_residential(ref.residential, params)
+        assert result.elec_twh == pytest.approx(175, abs=5)
+
+    def test_h2_is_zero(self):
+        ref = sdes_2023()
+        result = convert_residential(ref.residential, ElectrificationParams())
+        assert result.h2_twh == pytest.approx(0, abs=1)
+
+    def test_bio_enr_approx_107(self):
+        ref = sdes_2023()
+        result = convert_residential(ref.residential, ElectrificationParams())
+        assert result.bio_enr_twh == pytest.approx(107, abs=5)
+
+    def test_fossil_is_zero(self):
+        ref = sdes_2023()
+        result = convert_residential(ref.residential, ElectrificationParams())
+        assert result.fossil_residual_twh == pytest.approx(0, abs=1)
+
+    def test_total_approx_282(self):
+        ref = sdes_2023()
+        result = convert_residential(ref.residential, ElectrificationParams())
+        assert result.total_target_twh == pytest.approx(282, abs=5)
+
+    def test_higher_cop_reduces_electricity(self):
+        ref = sdes_2023()
+        base = convert_residential(ref.residential, ElectrificationParams())
+        high = convert_residential(ref.residential, ElectrificationParams(res_chauffage_cop=4.5))
+        assert high.elec_twh < base.elec_twh
