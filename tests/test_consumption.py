@@ -1,6 +1,9 @@
 """Tests for consumption module — SDES 2023 reference and electrification."""
 import pytest
-from src.consumption import UsageReference, SectorReference, ReferenceData, sdes_2023
+from src.consumption import (
+    UsageReference, SectorReference, ReferenceData, sdes_2023,
+    ElectrificationParams, SectorBalance, SystemBalance,
+)
 
 
 class TestUsageReference:
@@ -82,3 +85,49 @@ class TestReferenceData:
         ref = sdes_2023()
         total_elec = sum(s.elec_twh for s in ref.all_sectors)
         assert total_elec == pytest.approx(393, abs=5)
+
+
+class TestElectrificationParams:
+    def test_default_values(self):
+        p = ElectrificationParams()
+        assert p.res_chauffage_cop == 3.5
+        assert p.electrolyse_efficiency == 0.65
+        assert p.tpt_vp_ev_factor == 0.33
+
+    def test_custom_override(self):
+        p = ElectrificationParams(res_chauffage_cop=4.0)
+        assert p.res_chauffage_cop == 4.0
+
+
+class TestSectorBalance:
+    def test_vectors_sum(self):
+        sb = SectorBalance(
+            name="test", current_twh=100,
+            elec_twh=40, h2_twh=10, bio_enr_twh=30, fossil_residual_twh=20,
+        )
+        assert sb.total_target_twh == 100
+        assert sb.reduction_pct == pytest.approx(0.0)
+
+    def test_reduction_pct(self):
+        sb = SectorBalance(
+            name="test", current_twh=200,
+            elec_twh=50, h2_twh=10, bio_enr_twh=20, fossil_residual_twh=10,
+        )
+        assert sb.total_target_twh == 90
+        assert sb.reduction_pct == pytest.approx(0.55, abs=0.01)
+
+
+class TestSystemBalance:
+    def test_from_sectors(self):
+        sectors = {
+            "a": SectorBalance("a", 100, 50, 10, 30, 10),
+            "b": SectorBalance("b", 200, 80, 20, 60, 40),
+        }
+        sb = SystemBalance.from_sectors(sectors, electrolyse_efficiency=0.65)
+        assert sb.current_total_twh == 300
+        assert sb.direct_electricity_twh == 130
+        assert sb.h2_demand_twh == 30
+        assert sb.h2_production_elec_twh == pytest.approx(30 / 0.65, abs=0.5)
+        assert sb.total_electricity_twh == pytest.approx(130 + 30 / 0.65, abs=0.5)
+        assert sb.bio_enr_twh == 90
+        assert sb.fossil_residual_twh == 50

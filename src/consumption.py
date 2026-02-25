@@ -159,3 +159,160 @@ def sdes_2023() -> ReferenceData:
         agriculture=agriculture,
         non_energy=non_energy,
     )
+
+
+@dataclass
+class ElectrificationParams:
+    """Conversion knobs — all adjustable for sensitivity analysis."""
+    # Residential
+    res_chauffage_cop: float = 3.5
+    res_ecs_cop: float = 3.0
+    res_elec_specifique_gain: float = 0.15
+    res_cuisson_gain_induction: float = 0.20
+    res_clim_growth_twh: float = 2.0
+
+    # Tertiary
+    ter_renovation_gain: float = 0.30
+    ter_chauffage_cop: float = 3.0
+    ter_clim_gain: float = 0.20
+    ter_led_gain: float = 0.50
+    ter_elec_specifique_gain: float = 0.15
+    ter_ecs_cop: float = 3.0
+    ter_autres_gain: float = 0.30
+    ter_autres_fossil_residual_twh: float = 2.0
+
+    # Industry
+    ind_ht_efficiency_gain: float = 0.10
+    ind_ht_elec_fraction: float = 0.30
+    ind_ht_h2_fraction: float = 0.24
+    ind_ht_fossil_residual_twh: float = 15.0
+    ind_mt_cop: float = 2.25
+    ind_mt_h2_twh: float = 5.0
+    ind_mt_efficiency_gain: float = 0.15
+    ind_bt_cop: float = 3.25
+    ind_bt_efficiency_gain: float = 0.15
+    ind_force_motrice_gain: float = 0.12
+    ind_eclairage_gain: float = 0.20
+    ind_autres_gain: float = 0.15
+
+    # Transport
+    tpt_vp_modal_shift: float = 0.10
+    tpt_vp_sobriety: float = 0.05
+    tpt_vp_ev_factor: float = 0.33
+    tpt_vp_ev_fraction: float = 0.95
+    tpt_pl_rail_shift: float = 0.10
+    tpt_pl_battery_fraction: float = 0.50
+    tpt_pl_battery_factor: float = 0.35
+    tpt_pl_h2_fraction: float = 0.25
+    tpt_pl_h2_factor: float = 0.70
+    tpt_pl_biocarb_fraction: float = 0.15
+    tpt_pl_fossil_fraction: float = 0.10
+    tpt_vul_ev_factor: float = 0.33
+    tpt_vul_sobriety: float = 0.05
+    tpt_deux_roues_ev_factor: float = 0.30
+    tpt_bus_elec_twh: float = 4.0
+    tpt_bus_h2_twh: float = 2.0
+    tpt_rail_elec_twh: float = 13.0
+    tpt_rail_h2_twh: float = 1.0
+    tpt_avia_dom_modal_shift: float = 0.50
+    tpt_avia_dom_elec_twh: float = 1.0
+    tpt_avia_dom_biocarb_twh: float = 4.0
+    tpt_avia_intl_sobriety: float = 0.10
+    tpt_avia_intl_h2_twh: float = 5.0
+    tpt_avia_intl_biocarb_twh: float = 15.0
+    tpt_avia_intl_fossil_twh: float = 25.0
+    tpt_maritime_elec_twh: float = 2.0
+    tpt_maritime_h2_twh: float = 3.0
+    tpt_maritime_biocarb_twh: float = 3.0
+    tpt_maritime_fossil_twh: float = 8.0
+    tpt_autres_elec_twh: float = 8.0
+
+    # Agriculture
+    agr_machinisme_ev_fraction: float = 0.40
+    agr_machinisme_ev_factor: float = 0.35
+    agr_machinisme_h2_fraction: float = 0.20
+    agr_machinisme_biocarb_fraction: float = 0.30
+    agr_machinisme_fossil_fraction: float = 0.10
+    agr_serres_cop: float = 3.0
+    agr_elevage_cop: float = 3.0
+    agr_elevage_efficiency_gain: float = 0.10
+    agr_peche_elec_twh: float = 1.0
+    agr_peche_h2_twh: float = 1.0
+    agr_peche_fossil_twh: float = 1.0
+    agr_sechage_elec_twh: float = 1.0
+    agr_autres_elec_twh: float = 2.0
+
+    # Non-energy
+    ne_petrochimie_recycling_gain: float = 0.20
+    ne_petrochimie_bio_fraction: float = 0.30
+    ne_petrochimie_h2_fraction: float = 0.20
+    ne_petrochimie_elec_twh: float = 3.0
+    ne_engrais_h2_twh: float = 16.0
+    ne_engrais_fossil_twh: float = 2.0
+    ne_bitumes_recycling_gain: float = 0.20
+    ne_bitumes_bio_fraction: float = 0.30
+    ne_lubrifiants_bio_fraction: float = 0.50
+    ne_solvants_green_fraction: float = 0.60
+    ne_autres_elec_twh: float = 2.0
+    ne_autres_h2_twh: float = 2.0
+    ne_autres_bio_twh: float = 2.0
+    ne_autres_fossil_twh: float = 2.0
+
+    # System
+    electrolyse_efficiency: float = 0.65
+    ccgt_efficiency: float = 0.55
+
+
+@dataclass(frozen=True)
+class SectorBalance:
+    """Electrification result for one sector."""
+    name: str
+    current_twh: float
+    elec_twh: float
+    h2_twh: float
+    bio_enr_twh: float
+    fossil_residual_twh: float
+
+    @property
+    def total_target_twh(self) -> float:
+        return self.elec_twh + self.h2_twh + self.bio_enr_twh + self.fossil_residual_twh
+
+    @property
+    def reduction_pct(self) -> float:
+        if self.current_twh == 0:
+            return 0.0
+        return (self.current_twh - self.total_target_twh) / self.current_twh
+
+
+@dataclass(frozen=True)
+class SystemBalance:
+    """Complete system balance across all sectors."""
+    sectors: dict[str, SectorBalance]
+    current_total_twh: float
+    direct_electricity_twh: float
+    h2_demand_twh: float
+    h2_production_elec_twh: float
+    total_electricity_twh: float
+    bio_enr_twh: float
+    fossil_residual_twh: float
+
+    @classmethod
+    def from_sectors(
+        cls, sectors: dict[str, SectorBalance], electrolyse_efficiency: float,
+    ) -> SystemBalance:
+        current = sum(s.current_twh for s in sectors.values())
+        elec = sum(s.elec_twh for s in sectors.values())
+        h2 = sum(s.h2_twh for s in sectors.values())
+        h2_elec = h2 / electrolyse_efficiency
+        bio = sum(s.bio_enr_twh for s in sectors.values())
+        fossil = sum(s.fossil_residual_twh for s in sectors.values())
+        return cls(
+            sectors=sectors,
+            current_total_twh=current,
+            direct_electricity_twh=elec,
+            h2_demand_twh=h2,
+            h2_production_elec_twh=h2_elec,
+            total_electricity_twh=elec + h2_elec,
+            bio_enr_twh=bio,
+            fossil_residual_twh=fossil,
+        )
