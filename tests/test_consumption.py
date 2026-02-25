@@ -381,3 +381,31 @@ class TestSystemBalance_Integration:
             params=ElectrificationParams(res_chauffage_cop=5.0)
         )
         assert custom.total_electricity_twh < base.total_electricity_twh
+
+
+class TestTarificationIntegration:
+    def test_tarif_uses_consumption_balance(self):
+        from src.tarification import TarificationConfig, tarif_equilibre_eur_mwh
+        balance = calculate_system_balance()
+        config = TarificationConfig(
+            consommation_totale_twh=balance.total_electricity_twh,
+        )
+        tarif = tarif_equilibre_eur_mwh(config)
+        assert tarif['total_ttc_eur_mwh'] > 0
+
+    def test_tarif_default_matches_consumption(self):
+        """TarificationConfig default should match consumption.py output."""
+        from src.tarification import TarificationConfig
+        balance = calculate_system_balance()
+        config = TarificationConfig()
+        assert config.consommation_totale_twh == pytest.approx(
+            balance.total_electricity_twh, abs=5
+        )
+
+
+class TestSensitivityIntegration:
+    def test_sensitivity_accepts_demand(self):
+        """System balance produces reasonable demand for sensitivity analysis."""
+        balance = calculate_system_balance()
+        assert balance.total_electricity_twh > 700
+        assert balance.total_electricity_twh < 800

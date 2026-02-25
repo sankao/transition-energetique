@@ -92,8 +92,8 @@ class TarificationConfig:
     prix_actuel_industrie_eur_mwh: float = 130.0
 
     # Total electricity consumption (TWh/year, target scenario)
-    # Source: Model calculation
-    consommation_totale_twh: float = 700.0
+    # Source: consumption.py calculate_system_balance() -> ~729 TWh
+    consommation_totale_twh: float = 729.0
 
     # Split between consumer types
     part_menages: float = 0.40  # 40% residential
