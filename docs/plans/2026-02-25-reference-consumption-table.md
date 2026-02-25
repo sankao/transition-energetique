@@ -29,13 +29,13 @@ code doit etre confrontee a ce tableau. Les regles sont :
 
 | Secteur              | TWh total | Elec | Gaz  | Petrole | Charbon | EnR  | Reseau |
 |----------------------|-----------|------|------|---------|---------|------|--------|
-| Residentiel          | 422       | 147  | 119  | 36      | —       | 127  | 13     |
+| Residentiel          | 422       | 147  | 119  | 36      | —       | 107  | 13     |
 | Tertiaire            | 229       | 124  | 62   | 21      | —       | 11   | 11     |
-| Industrie            | 283       | 102  | 102  | 28      | 6       | 25   | 17     |
+| Industrie            | 283       | 102  | 102  | 28      | 6       | 25   | 20     |
 | Transport            | 513       | 13   | 5    | 457     | —       | 38   | —      |
 | Agriculture + Peche  | 55        | 7    | 3    | 40      | —       | 5    | —      |
 | Usages non-energ.    | 113       | —    | 25   | 88      | —       | —    | —      |
-| **TOTAL FRANCE**     | **1 615** | **393** | **316** | **670** | **6** | **206** | **41** |
+| **TOTAL FRANCE**     | **1 615** | **393** | **316** | **670** | **6** | **186** | **44** |
 
 Controle SDES : electricite ~24%, gaz ~20%, petrole ~41%, EnR ~13%, reseau ~3%.
 
@@ -43,15 +43,17 @@ Controle SDES : electricite ~24%, gaz ~20%, petrole ~41%, EnR ~13%, reseau ~3%.
 
 | Usage              | TWh | Elec | Gaz | Petrole | EnR (bois) | Reseau |
 |--------------------|-----|------|-----|---------|------------|--------|
-| Chauffage          | 312 | 50   | 94  | 31      | 125        | 12     |
+| Chauffage          | 292 | 50   | 94  | 31      | 105        | 12     |
 | ECS                | 38  | 15   | 15  | 5       | 2          | 1      |
 | Elec specifique    | 68  | 68   | —   | —       | —          | —      |
 | Cuisson            | 22  | 12   | 10  | —       | —          | —      |
 | Climatisation      | 2   | 2    | —   | —       | —          | —      |
-| **Total**          | **422** | **147** | **119** | **36** | **127** | **13** |
+| **Total**          | **422** | **147** | **119** | **36** | **107** | **13** |
 
 Sources : SDES (150.7 TWh elec, 101.3 gaz, 35.7 petrole, 119.4 EnR, 14.9 chaleur).
 Sous-repartition par usage : estimations CEREN/ADEME.
+Note : chauffage reconcilie de 312 a 292 TWh pour coherer avec le total SDES de 422 TWh
+(ecart de 20 TWh sur les estimations bois/EnR : 125 → 105).
 
 ### 2.3 Tertiaire — detail par usage (229 TWh)
 
@@ -78,7 +80,7 @@ Sources : SDES (54% elec, 27% gaz, 9% petrole). Sous-repartition : CEREN/ADEME.
 | Force motrice — moteurs, compresseurs            | 65  | 60   | 3   | 2       | —       | —   | —      |
 | Electrochimie — aluminium, chlore                | 18  | 18   | —   | —       | —       | —   | —      |
 | Eclairage / IT / support                         | 15  | 3    | 7   | 2       | —       | 3   | —      |
-| Autres — froid industriel, air comprime          | 15  | 3    | 7   | 1       | —       | 1   | —      |
+| Autres — froid industriel, air comprime          | 15  | 3    | 7   | 1       | —       | 1   | 3      |
 | **Total**                                        | **283** | **102** | **102** | **28** | **6** | **25** | **17** |
 
 Sources : SDES (36% elec, 36% gaz, 10% petrole, 9% EnR, 6% reseau, 2% charbon).
@@ -137,12 +139,12 @@ Sources : SDES (74% petrole, 13% elec, 9% EnR, 4% gaz). Sous-repartition : Agres
 
 | Usage           | Methode                                                     | Elec | H2 | EnR | Fos. | Total |
 |-----------------|-------------------------------------------------------------|------|----|-----|------|-------|
-| Chauffage (312) | PAC COP 3.5 moy pour gaz+fioul. Bois maintenu. Reseau maint. Elec existant optimise PAC. | 71 | 0 | 125 | 0 | 196 |
+| Chauffage (292) | PAC COP 3.5 moy pour gaz+fioul. Bois maintenu. Reseau maint. Elec existant optimise PAC. | 71 | 0 | 105 | 0 | 176 |
 | ECS (38)        | PAC / chauffe-eau thermo COP 3.0 pour fossile. Elec maintenu. | 22 | 0 | 2 | 0 | 24 |
 | Elec spe. (68)  | Gains efficacite -15% (LED, appareils A+++).                | 58 | 0 | 0 | 0 | 58 |
 | Cuisson (22)    | Induction pour gaz (efficacite +20%).                       | 20 | 0 | 0 | 0 | 20 |
 | Clim (2)        | Maintenu + croissance moderee.                              | 4  | 0 | 0 | 0 | 4  |
-| **Total**       |                                                             | **175** | **0** | **127** | **0** | **302** |
+| **Total**       |                                                             | **175** | **0** | **107** | **0** | **282** |
 
 ### 3.2 Tertiaire (229 -> 140 TWh, -39%)
 
@@ -228,13 +230,13 @@ ici une matiere premiere, pas une source d'energie.
 
 | Secteur             | Actuel | -> Elec | -> H2 | -> Bio/EnR | -> Fos. res. | Total cible |
 |---------------------|--------|---------|-------|------------|--------------|-------------|
-| Residentiel         | 422    | 175     | 0     | 127        | 0            | 302         |
+| Residentiel         | 422    | 175     | 0     | 107        | 0            | 282         |
 | Tertiaire           | 229    | 120     | 0     | 8          | 2            | 140         |
 | Industrie           | 283    | 162     | 23    | 22         | 15           | 222         |
 | Transport           | 513    | 118     | 33    | 45         | 49           | 245         |
 | Agriculture         | 55     | 16      | 5     | 11         | 4            | 36          |
 | Non-energie         | 113    | 5       | 28    | 27         | 35           | 95          |
-| **Sous-total conso** | **1 615** | **596** | **89** | **240** | **105**    | **1 040**   |
+| **Sous-total conso** | **1 615** | **596** | **89** | **220** | **105**    | **1 020**   |
 
 ### 4.2 Production H2
 
@@ -301,7 +303,7 @@ impose un complement gaz :
 | Consommation finale totale  | 1 615 TWh  | 1 230 TWh      | -24%      |
 | Fossile total               | 992 TWh    | 295 TWh        | **-70%**  |
 | Electricite produite        | ~475 TWh   | 733 TWh        | +54%      |
-| Bio/EnR (hors elec)         | 206 TWh    | 240 TWh        | +17%      |
+| Bio/EnR (hors elec)         | 186 TWh    | 220 TWh        | +18%      |
 
 ---
 
@@ -343,7 +345,7 @@ Le modele doit reproduire ces valeurs. Les parametres critiques sont :
 L'ecart principal vient du residentiel : le modele ne comptait que la
 consommation electrique de chauffage (post-PAC), pas la consommation
 energetique totale actuelle. Le tableau de reference impose de partir du
-total reel (312 TWh) pour ensuite appliquer les conversions.
+total reel (292 TWh, reconcilie avec le secteur SDES 422 TWh) pour ensuite appliquer les conversions.
 
 ---
 
