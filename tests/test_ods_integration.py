@@ -109,3 +109,41 @@ def test_seven_electrification_categories_exist():
         and e.label.startswith('Electrification')
     ]
     assert len(cats) == 7, f"Expected 7 categories, got {len(cats)}: {[c.label for c in cats]}"
+
+
+def test_store_and_load_balance_roundtrip():
+    """Store SystemBalance in DB, load back, verify 7 rows."""
+    from src.consumption import calculate_system_balance
+    from src.database.store import EnergyModelDB
+    balance = calculate_system_balance()
+    with EnergyModelDB(":memory:") as db:
+        db.store_balance(balance)
+        data = db.load_balance()
+    assert len(data) == 7  # 6 sectors + TOTAL
+    total_row = [d for d in data if d['sector'] == 'TOTAL'][0]
+    assert abs(total_row['elec_twh'] - balance.direct_electricity_twh) < 0.1
+    assert abs(total_row['h2_production_elec_twh'] - balance.h2_production_elec_twh) < 0.1
+
+
+def test_balance_total_elec_approximately_595():
+    """TOTAL row elec_twh should be ~595 TWh."""
+    from src.consumption import calculate_system_balance
+    from src.database.store import EnergyModelDB
+    balance = calculate_system_balance()
+    with EnergyModelDB(":memory:") as db:
+        db.store_balance(balance)
+        data = db.load_balance()
+    total_row = [d for d in data if d['sector'] == 'TOTAL'][0]
+    assert abs(total_row['elec_twh'] - 595) < 10
+
+
+def test_balance_h2_production_approximately_134():
+    """TOTAL row h2_production_elec_twh should be ~134 TWh."""
+    from src.consumption import calculate_system_balance
+    from src.database.store import EnergyModelDB
+    balance = calculate_system_balance()
+    with EnergyModelDB(":memory:") as db:
+        db.store_balance(balance)
+        data = db.load_balance()
+    total_row = [d for d in data if d['sector'] == 'TOTAL'][0]
+    assert abs(total_row['h2_production_elec_twh'] - 134) < 10

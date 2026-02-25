@@ -77,5 +77,17 @@ TABLES = {
             energie_gaz_twh REAL,
             PRIMARY KEY (mois, plage)
         )
+    """,
+    'bilan_electrification': """
+        CREATE TABLE IF NOT EXISTS bilan_electrification (
+            sector TEXT PRIMARY KEY,
+            current_twh REAL,
+            elec_twh REAL,
+            h2_twh REAL,
+            bio_enr_twh REAL,
+            fossil_residual_twh REAL,
+            total_target_twh REAL,
+            h2_production_elec_twh REAL
+        )
     """
 }

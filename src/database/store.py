@@ -232,3 +232,28 @@ class EnergyModelDB:
         cursor = self.conn.execute("SELECT value FROM metadata WHERE key = ?", (key,))
         row = cursor.fetchone()
         return row['value'] if row else None
+
+    def store_balance(self, balance):
+        """Store SystemBalance from consumption.py."""
+        from src.consumption import SystemBalance
+        rows = []
+        for name, sb in balance.sectors.items():
+            rows.append((name, sb.current_twh, sb.elec_twh, sb.h2_twh,
+                          sb.bio_enr_twh, sb.fossil_residual_twh,
+                          sb.total_target_twh, 0.0))
+        # Total row
+        rows.append(('TOTAL', balance.current_total_twh,
+                      balance.direct_electricity_twh, balance.h2_demand_twh,
+                      balance.bio_enr_twh, balance.fossil_residual_twh,
+                      balance.direct_electricity_twh + balance.h2_demand_twh + balance.bio_enr_twh + balance.fossil_residual_twh,
+                      balance.h2_production_elec_twh))
+        self.conn.executemany(
+            "INSERT OR REPLACE INTO bilan_electrification (sector, current_twh, elec_twh, h2_twh, bio_enr_twh, fossil_residual_twh, total_target_twh, h2_production_elec_twh) VALUES (?,?,?,?,?,?,?,?)",
+            rows
+        )
+        self.conn.commit()
+
+    def load_balance(self):
+        """Load balance data as list of dicts."""
+        cursor = self.conn.execute("SELECT * FROM bilan_electrification ORDER BY rowid")
+        return [dict(row) for row in cursor.fetchall()]
