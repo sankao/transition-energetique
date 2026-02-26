@@ -209,8 +209,9 @@ class EnergyModelDB:
             (mois, plage, pv_maisons_kw, pv_collectif_kw, pv_centrales_kw,
              hydraulique_kw, eolien_kw, nucleaire_kw, total_production_kw,
              chauffage_kw, transport_kw, industrie_kw, tertiaire_kw, agriculture_kw,
-             total_conso_kw, deficit_gaz_kw, duree_h, energie_gaz_twh)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             total_conso_kw, deficit_gaz_kw, duree_h, energie_gaz_twh,
+             h2_electrolyse_kw)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             rows
         )
         self.conn.commit()

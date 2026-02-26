@@ -191,3 +191,101 @@ def test_compute_consumption_stores_balance():
     assert len(data) == 7  # 6 sectors + TOTAL
     total_row = [d for d in data if d['sector'] == 'TOTAL'][0]
     assert abs(total_row['elec_twh'] - 595) < 10
+
+
+# --- H2 electrolyse column tests (Task 6) ---
+
+
+def test_synthesis_schema_has_h2_column():
+    """synthese_moulinette table DDL contains h2_electrolyse_kw column."""
+    from src.database.schema import TABLES
+    assert 'h2_electrolyse_kw' in TABLES['synthese_moulinette']
+
+
+def test_synthesis_store_accepts_19_columns():
+    """store_synthesis() accepts 19-element tuples with h2_electrolyse_kw."""
+    from src.database.store import EnergyModelDB
+    with EnergyModelDB(":memory:") as db:
+        row = (
+            'Janvier', '8h-13h',
+            1.0, 2.0, 3.0,       # pv_maisons, pv_collectif, pv_centrales
+            4.0, 0.0, 5.0, 15.0, # hydraulique, eolien, nucleaire, total_prod
+            6.0, 7.0, 8.0, 9.0, 10.0,  # chauffage..agriculture
+            40.0, 25.0, 5.0, 0.5,  # total_conso, deficit, duree, energie_gaz
+            99.0,                 # h2_electrolyse_kw (19th column)
+        )
+        db.store_synthesis([row])
+        data = db.load_synthesis()
+    assert len(data) == 1
+    assert data[0]['h2_electrolyse_kw'] == 99.0
+
+
+def test_synthesis_h2_electrolyse_kw_value():
+    """H2 electrolyse kW from balance should be ~15.3 million kW (134 TWh / 8760h)."""
+    from src.consumption import calculate_system_balance
+    balance = calculate_system_balance()
+    expected_kw = balance.h2_production_elec_twh * 1e9 / 8760
+    # Should be about 15.3 million kW (134 TWh flat)
+    assert abs(expected_kw - 15.3e6) < 1e6
+
+
+def test_synthesis_headers_include_h2_columns():
+    """HEADERS list includes H2 and Total elec+H2 columns at positions R and S."""
+    from src.ods_generator.synthesis_sheet import HEADERS
+    assert 'H2 électrolyse (kW)' in HEADERS
+    assert 'Total élec+H2 (kW)' in HEADERS
+    # R is index 17, S is index 18 (0-based)
+    assert HEADERS[17] == 'H2 électrolyse (kW)'
+    assert HEADERS[18] == 'Total élec+H2 (kW)'
+
+
+def test_synthesis_deficit_includes_h2():
+    """Deficit calculation in compute_synthesis includes H2 electrolyse demand."""
+    from src.config import EnergyModelConfig
+    from src.consumption import ElectrificationParams
+    from src.database.store import EnergyModelDB
+    from src.heating import HeatingConfig
+    from src.transport import TransportConfig
+    from src.secteurs import IndustrieConfig, TertiaireConfig
+    from src.agriculture import AgricultureConfig
+    from main import compute_consumption, compute_synthesis
+
+    config = EnergyModelConfig()
+    ep = ElectrificationParams()
+    with EnergyModelDB(":memory:") as db:
+        compute_consumption(
+            db, config,
+            heating_config=HeatingConfig(),
+            transport_config=TransportConfig(),
+            industrie_config=IndustrieConfig(),
+            tertiaire_config=TertiaireConfig(),
+            agriculture_config=AgricultureConfig(),
+            electrification_params=ep,
+        )
+        # We need production data too — use dummy data for all 60 slots
+        mois_ordre = (
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        )
+        plages = ('8h-13h', '13h-18h', '18h-20h', '20h-23h', '23h-8h')
+        rte_rows = []
+        pvgis_rows = []
+        for mois in mois_ordre:
+            for plage in plages:
+                rte_rows.append((mois, plage, 40000.0, 8000.0))  # 40 GW nuc, 8 GW hydro
+                pvgis_rows.append((mois, plage, 0.15))  # 15% capacity factor
+        db.store_rte_production(rte_rows)
+        db.store_pvgis_factors(pvgis_rows)
+
+        compute_synthesis(db, config)
+        data = db.load_synthesis()
+
+    assert len(data) == 60
+    # Every row should have h2_electrolyse_kw > 0
+    for row in data:
+        assert row['h2_electrolyse_kw'] > 0
+    # All rows should have the same h2_electrolyse_kw (flat distribution)
+    h2_values = [row['h2_electrolyse_kw'] for row in data]
+    assert max(h2_values) == min(h2_values), "H2 electrolyse should be flat across all slots"
+    # Value should be ~15.3M kW
+    assert abs(h2_values[0] - 15.3e6) < 1e6

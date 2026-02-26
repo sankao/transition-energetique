@@ -103,6 +103,15 @@ def compute_synthesis(db, config):
     heating_lookup = {(r['mois'], r['plage']): r for r in heating_data}
     sector_lookup = {(r['mois'], r['plage']): r for r in sector_data}
 
+    # Load balance to get H2 electrolyse demand
+    balance_data = db.load_balance()
+    h2_elec_kw = 0.0
+    if balance_data:
+        total_row = [d for d in balance_data if d['sector'] == 'TOTAL']
+        if total_row:
+            h2_elec_twh = total_row[0]['h2_production_elec_twh']
+            h2_elec_kw = h2_elec_twh * 1e9 / 8760  # Flat distribution
+
     jours = config.temporal.jours_par_mois
 
     # PV parameters from config
@@ -141,8 +150,9 @@ def compute_synthesis(db, config):
             agriculture = sector_lookup.get(key, {}).get('agriculture_kw', 0.0)
             total_conso = chauffage + transport + industrie + tertiaire + agriculture
 
-            # Deficit
-            deficit = max(0.0, total_conso - total_prod)
+            # Deficit: include H2 electrolyse in electricity demand
+            total_conso_with_h2 = total_conso + h2_elec_kw
+            deficit = max(0.0, total_conso_with_h2 - total_prod)
             duree = DUREES[plage]
             energie_gaz = deficit * duree * jours / 1e9
 
@@ -154,10 +164,13 @@ def compute_synthesis(db, config):
                 hydraulique, eolien, nucleaire, total_prod,
                 chauffage, transport, industrie, tertiaire, agriculture,
                 total_conso, deficit, duree, energie_gaz,
+                h2_elec_kw,
             ))
 
     db.store_synthesis(synthesis_rows)
-    print(f"      Synthesis: {len(synthesis_rows)} rows, gas backup: {total_gas_twh:.1f} TWh/year")
+    print(f"      Synthesis: {len(synthesis_rows)} rows, "
+          f"H2 electrolyse: {h2_elec_kw/1e6:.1f} MW flat, "
+          f"gas backup: {total_gas_twh:.1f} TWh/year")
     return total_gas_twh
 
 

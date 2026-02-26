@@ -75,6 +75,7 @@ TABLES = {
             deficit_gaz_kw REAL,
             duree_h REAL,
             energie_gaz_twh REAL,
+            h2_electrolyse_kw REAL,
             PRIMARY KEY (mois, plage)
         )
     """,

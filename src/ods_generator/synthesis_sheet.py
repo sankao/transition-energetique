@@ -39,6 +39,8 @@ HEADERS = [
     'Déficit gaz (kW)',    # O
     'Durée (h)',           # P
     'Énergie gaz (TWh)',   # Q
+    'H2 électrolyse (kW)', # R
+    'Total élec+H2 (kW)',  # S
 ]
 
 
@@ -188,10 +190,10 @@ def add_synthesis_sheet(writer: ODSWriter, db):
                     'formula': f"of:=[.I{r}]+[.J{r}]+[.K{r}]+[.L{r}]+[.M{r}]",
                 },
 
-                # O: Déficit gaz = MAX(0, conso - prod)
+                # O: Déficit gaz = MAX(0, total_elec_h2 - prod)
                 {
                     'value': vals.get('deficit_gaz_kw', 0.0),
-                    'formula': f"of:=MAX(0;[.N{r}]-[.H{r}])",
+                    'formula': f"of:=MAX(0;[.N{r}]+[.R{r}]-[.H{r}])",
                 },
 
                 # P: Durée (h) - static
@@ -205,6 +207,18 @@ def add_synthesis_sheet(writer: ODSWriter, db):
                         f"*{ref_jours}"
                         f"/1000000000"
                     ),
+                },
+
+                # R: H2 électrolyse (kW) — flat value from balance
+                {
+                    'value': vals.get('h2_electrolyse_kw', 0.0),
+                },
+
+                # S: Total élec+H2 = N + R
+                {
+                    'value': (vals.get('total_conso_kw', 0.0)
+                              + vals.get('h2_electrolyse_kw', 0.0)),
+                    'formula': f"of:=[.N{r}]+[.R{r}]",
                 },
             ]
 
@@ -248,6 +262,10 @@ def add_synthesis_sheet(writer: ODSWriter, db):
             'style': 'total',
         })
 
+        # R, S: empty for monthly totals
+        cells.append({'value': ''})
+        cells.append({'value': ''})
+
         writer.add_formula_row(table, cells)
         row_num += 1
 
@@ -269,4 +287,9 @@ def add_synthesis_sheet(writer: ODSWriter, db):
         'formula': f"of:=SUM([.Q{monthly_start}:.Q{monthly_end}])",
         'style': 'total',
     })
+
+    # R, S: empty for annual total
+    cells.append({'value': ''})
+    cells.append({'value': ''})
+
     writer.add_formula_row(table, cells)
