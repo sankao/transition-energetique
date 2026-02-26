@@ -147,3 +147,47 @@ def test_balance_h2_production_approximately_134():
         data = db.load_balance()
     total_row = [d for d in data if d['sector'] == 'TOTAL'][0]
     assert abs(total_row['h2_production_elec_twh'] - 134) < 10
+
+
+def test_store_parameters_includes_electrification_knobs():
+    """store_parameters with electrification_params stores all 226 knobs."""
+    from src.config import EnergyModelConfig
+    from src.consumption import ElectrificationParams
+    from src.database.store import EnergyModelDB
+    config = EnergyModelConfig()
+    ep = ElectrificationParams()
+    with EnergyModelDB(":memory:") as db:
+        db.store_parameters(config, electrification_params=ep)
+        cursor = db.conn.execute("SELECT COUNT(*) FROM parametres")
+        count = cursor.fetchone()[0]
+    # Should have 226 knob rows (142 old + 84 new)
+    assert count == 226
+
+
+def test_compute_consumption_stores_balance():
+    """compute_consumption() with electrification_params stores balance in DB."""
+    from src.config import EnergyModelConfig
+    from src.consumption import ElectrificationParams
+    from src.database.store import EnergyModelDB
+    from src.heating import HeatingConfig
+    from src.transport import TransportConfig
+    from src.secteurs import IndustrieConfig, TertiaireConfig
+    from src.agriculture import AgricultureConfig
+    from main import compute_consumption
+
+    config = EnergyModelConfig()
+    ep = ElectrificationParams()
+    with EnergyModelDB(":memory:") as db:
+        compute_consumption(
+            db, config,
+            heating_config=HeatingConfig(),
+            transport_config=TransportConfig(),
+            industrie_config=IndustrieConfig(),
+            tertiaire_config=TertiaireConfig(),
+            agriculture_config=AgricultureConfig(),
+            electrification_params=ep,
+        )
+        data = db.load_balance()
+    assert len(data) == 7  # 6 sectors + TOTAL
+    total_row = [d for d in data if d['sector'] == 'TOTAL'][0]
+    assert abs(total_row['elec_twh'] - 595) < 10

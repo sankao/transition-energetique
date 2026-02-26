@@ -13,6 +13,7 @@ import sys
 from datetime import datetime
 
 from src.config import EnergyModelConfig
+from src.consumption import ElectrificationParams, calculate_system_balance
 from src.database.store import EnergyModelDB
 from src.downloaders.rte_eco2mix import download_rte_production
 from src.downloaders.pvgis_solar import download_pvgis_capacity_factors
@@ -47,11 +48,15 @@ def download_data(year, cache_dir, db):
 
 
 def compute_consumption(db, config, heating_config, transport_config,
-                        industrie_config, tertiaire_config, agriculture_config):
+                        industrie_config, tertiaire_config, agriculture_config,
+                        electrification_params=None):
     """Step 2: Compute heating, transport, sector, agriculture consumption."""
     print("[2/5] Computing consumption models...")
 
-    # Parameters (all 142 knobs via knob registry)
+    if electrification_params is None:
+        electrification_params = ElectrificationParams()
+
+    # Parameters (all 226 knobs via knob registry)
     db.store_parameters(
         config,
         heating_config=heating_config,
@@ -59,7 +64,15 @@ def compute_consumption(db, config, heating_config, transport_config,
         industrie_config=industrie_config,
         tertiaire_config=tertiaire_config,
         agriculture_config=agriculture_config,
+        electrification_params=electrification_params,
     )
+
+    # Compute and store system balance
+    balance = calculate_system_balance(params=electrification_params)
+    db.store_balance(balance)
+    print(f"      Balance: {balance.total_electricity_twh:.0f} TWh total elec "
+          f"({balance.direct_electricity_twh:.0f} direct + "
+          f"{balance.h2_production_elec_twh:.0f} H2 prod)")
 
     # Heating (60 rows via Roland model with COP(T))
     db.store_heating_data(heating_config)
@@ -150,7 +163,8 @@ def compute_synthesis(db, config):
 
 def generate_ods(db, output_path, config=None, heating_config=None,
                  transport_config=None, industrie_config=None,
-                 tertiaire_config=None, agriculture_config=None):
+                 tertiaire_config=None, agriculture_config=None,
+                 electrification_params=None):
     """Step 4: Generate ODS file with source sheets and synthesis formulas."""
     print(f"[4/5] Generating ODS: {output_path}")
 
@@ -163,6 +177,7 @@ def generate_ods(db, output_path, config=None, heating_config=None,
         industrie_config=industrie_config,
         tertiaire_config=tertiaire_config,
         agriculture_config=agriculture_config,
+        electrification_params=electrification_params,
     )
     add_synthesis_sheet(writer, db)
     writer.save(output_path)
@@ -194,6 +209,7 @@ def main():
     industrie_config = IndustrieConfig()
     tertiaire_config = TertiaireConfig()
     agriculture_config = AgricultureConfig()
+    electrification_params = ElectrificationParams()
 
     print("=" * 60)
     print("Energy Transition Model — Data Pipeline")
@@ -210,7 +226,8 @@ def main():
             download_data(args.year, args.cache_dir, db)
 
         compute_consumption(db, config, heating_config, transport_config,
-                            industrie_config, tertiaire_config, agriculture_config)
+                            industrie_config, tertiaire_config, agriculture_config,
+                            electrification_params=electrification_params)
         gas_total = compute_synthesis(db, config)
 
         if args.download_only:
@@ -222,7 +239,8 @@ def main():
                          transport_config=transport_config,
                          industrie_config=industrie_config,
                          tertiaire_config=tertiaire_config,
-                         agriculture_config=agriculture_config)
+                         agriculture_config=agriculture_config,
+                         electrification_params=electrification_params)
 
         db.store_metadata('pipeline_end', datetime.now().isoformat())
         db.store_metadata('gas_total_twh', f"{gas_total:.2f}")

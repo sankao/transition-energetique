@@ -33,11 +33,13 @@ class EnergyModelDB:
 
     def store_parameters(self, config, heating_config=None,
                          transport_config=None, industrie_config=None,
-                         tertiaire_config=None, agriculture_config=None):
-        """Store all 142 model parameters via the knob registry.
+                         tertiaire_config=None, agriculture_config=None,
+                         electrification_params=None):
+        """Store all 226 model parameters via the knob registry.
 
         config is an EnergyModelConfig instance. Other configs are optional
         sector-specific configs; if None, registry defaults are used.
+        electrification_params is an ElectrificationParams instance.
         """
         from src.ods_generator.knob_registry import build_parametres_rows_from_configs, KnobEntry, REGISTRY
 
@@ -48,6 +50,7 @@ class EnergyModelDB:
             industrie_config=industrie_config,
             tertiaire_config=tertiaire_config,
             agriculture_config=agriculture_config,
+            electrification_params=electrification_params,
         )
         # Only store KnobEntry rows (skip CategoryEntry)
         params = []

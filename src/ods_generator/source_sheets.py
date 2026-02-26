@@ -6,6 +6,7 @@ Each function adds a data sheet with consistent 60-row layout
 Row 1 = title, Row 2 = header, rows 3+ = data.
 """
 
+from .balance_sheet import add_balance_sheet
 from .writer import ODSWriter
 from .knob_registry import (
     REGISTRY, KnobEntry, CategoryEntry,
@@ -23,8 +24,9 @@ PLAGES = ('8h-13h', '13h-18h', '18h-20h', '20h-23h', '23h-8h')
 def add_parametres_sheet(writer: ODSWriter, db,
                          config=None, heating_config=None,
                          transport_config=None, industrie_config=None,
-                         tertiaire_config=None, agriculture_config=None):
-    """Add parameters sheet with all 142 knobs organized by category.
+                         tertiaire_config=None, agriculture_config=None,
+                         electrification_params=None):
+    """Add parameters sheet with all 226 knobs organized by category.
 
     Uses knob_registry as single source of truth. Category rows get
     a special style. If config objects are provided, values come from
@@ -37,6 +39,7 @@ def add_parametres_sheet(writer: ODSWriter, db,
         industrie_config=industrie_config,
         tertiaire_config=tertiaire_config,
         agriculture_config=agriculture_config,
+        electrification_params=electrification_params,
     )
 
     # Use add_formula_sheet so we can mix category-styled and normal rows
@@ -130,7 +133,8 @@ def add_consommation_sectors_sheet(writer: ODSWriter, db):
 def add_all_source_sheets(writer: ODSWriter, db,
                           config=None, heating_config=None,
                           transport_config=None, industrie_config=None,
-                          tertiaire_config=None, agriculture_config=None):
+                          tertiaire_config=None, agriculture_config=None,
+                          electrification_params=None):
     """Add all source data sheets in order."""
     add_parametres_sheet(
         writer, db,
@@ -140,12 +144,15 @@ def add_all_source_sheets(writer: ODSWriter, db,
         industrie_config=industrie_config,
         tertiaire_config=tertiaire_config,
         agriculture_config=agriculture_config,
+        electrification_params=electrification_params,
     )
     add_prod_nucleaire_hydraulique_sheet(writer, db)
     add_facteurs_solaires_sheet(writer, db)
     # Static consumption sheets (kept for reference / auditability)
     add_consommation_chauffage_sheet(writer, db)
     add_consommation_sectors_sheet(writer, db)
+    # Electrification balance sheet (sector-by-sector TWh breakdown)
+    add_balance_sheet(writer, db)
 
     # Formula-based calc sheets
     from .calc_sheets import (

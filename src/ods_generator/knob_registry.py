@@ -1842,7 +1842,7 @@ REGISTRY: List[Union[KnobEntry, CategoryEntry]] = [
         field_name='ind_autres_gain',
     ),
 
-    # --- Transport (29 knobs) ---
+    # --- Transport (30 knobs) ---
     CategoryEntry('Electrification - Transport'),
     KnobEntry(
         name='tpt_vp_modal_shift',
@@ -2278,7 +2278,7 @@ REGISTRY: List[Union[KnobEntry, CategoryEntry]] = [
         field_name='agr_autres_elec_twh',
     ),
 
-    # --- Non-energy (13 knobs) ---
+    # --- Non-energy (14 knobs) ---
     CategoryEntry('Electrification - Non-energetique'),
     KnobEntry(
         name='ne_petrochimie_recycling_gain',
